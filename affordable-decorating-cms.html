@@ -1,0 +1,2292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Affordable Decorating: site editor</title>
+  <style>
+    :root {
+      --ink: #1c1c1c;
+      --muted: #5c5c5c;
+      --paper: #ffffff;
+      --panel: #f4f4f2;
+      --rule: #cfcfcb;
+      --accent: #1d3fae;
+      --danger: #a1260f;
+      --ok: #1d6b34;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+    .bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 1rem;
+      padding: 0.75rem 1.25rem;
+      background: var(--panel);
+      border-bottom: 1px solid var(--rule);
+    }
+    .bar h1 { margin: 0 1rem 0 0; font-size: 1.1rem; }
+    .bar-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    #status { margin: 0; flex-basis: 100%; min-height: 1.4em; color: var(--muted); }
+    #status.error { color: var(--danger); }
+    #status.ok { color: var(--ok); }
+
+    button, .file-btn {
+      font: inherit;
+      padding: 0.4rem 0.8rem;
+      border: 1px solid #8a8a86;
+      border-radius: 4px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    button:hover, .file-btn:hover { background: #ececea; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.primary:hover { background: #17338c; }
+    button.danger { color: var(--danger); border-color: var(--danger); }
+    button.link { border: 0; background: none; color: var(--accent); padding: 0.2rem 0.3rem; text-decoration: underline; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+      outline: 3px solid #f2a900;
+      outline-offset: 1px;
+    }
+    .file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .file-btn:focus-within { outline: 3px solid #f2a900; outline-offset: 1px; }
+    [hidden] { display: none !important; }
+
+    #welcome { max-width: 42rem; padding: 2rem 1.25rem; }
+    #welcome h2 { margin-top: 0; }
+
+    #app { display: grid; grid-template-columns: 19rem 1fr; min-height: calc(100vh - 8rem); }
+    .side { border-right: 1px solid var(--rule); padding: 1rem; background: #fafaf8; }
+    .main { padding: 1rem 1.5rem 4rem; max-width: 52rem; }
+
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.9rem; }
+    .tabs button { padding: 0.35rem 0.6rem; }
+    .tabs button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .side input[type="search"] { width: 100%; margin-bottom: 0.6rem; }
+    .list { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+    .list button {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      border-radius: 3px;
+      padding: 0.35rem 0.5rem;
+      background: transparent;
+    }
+    .list button[aria-current="true"] { background: #dfe6fb; font-weight: 600; }
+    .list .sub { display: block; color: var(--muted); font-size: 0.85rem; font-weight: normal; }
+
+    h2.form-title { margin: 0 0 1rem; font-size: 1.25rem; }
+    .field { margin-bottom: 0.9rem; }
+    .field > label { display: block; }
+    .lab { display: block; font-weight: 600; margin-bottom: 0.15rem; }
+    .hint { color: var(--muted); font-size: 0.85rem; margin-top: 0.15rem; }
+    input[type="text"], input[type="date"], input[type="search"], select, textarea {
+      font: inherit;
+      width: 100%;
+      padding: 0.4rem 0.5rem;
+      border: 1px solid #8a8a86;
+      border-radius: 4px;
+      background: #fff;
+      color: var(--ink);
+    }
+    textarea { resize: vertical; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+    .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.9rem; }
+
+    fieldset.group { border: 1px solid var(--rule); border-radius: 4px; padding: 0.6rem 0.8rem 0.8rem; margin: 0 0 1rem; }
+    fieldset.group legend { font-weight: 600; padding: 0 0.3rem; }
+    .row {
+      display: grid;
+      gap: 0.5rem;
+      align-items: end;
+      padding: 0.5rem 0;
+      border-bottom: 1px dashed var(--rule);
+    }
+    .row.detail { grid-template-columns: 1fr 2fr auto; }
+    .row.image { grid-template-columns: 1.4fr 1.4fr 1fr auto; }
+    .row.file { grid-template-columns: 1fr 1.4fr auto; }
+    .row.file .sub { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.4fr; gap: 0.5rem; }
+    .mini select { width: 100%; }
+    .mini span { display: block; font-size: 0.8rem; color: var(--muted); }
+    .row-tools { display: flex; gap: 0.2rem; flex-wrap: wrap; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.2rem; }
+    #errors { border: 1px solid var(--danger); background: #fff3f0; color: var(--danger); padding: 0.6rem 0.9rem; border-radius: 4px; margin-bottom: 1rem; }
+    #errors ul { margin: 0.3rem 0 0; padding-left: 1.2rem; }
+    details.preview { margin-top: 1.5rem; }
+    details.preview pre { background: var(--panel); padding: 0.8rem; overflow: auto; border-radius: 4px; font-size: 0.85rem; }
+
+    .filterbar { display: grid; gap: 0.35rem; margin: 0.2rem 0 0.4rem; }
+    .filterbar select { font: inherit; font-size: 0.9rem; width: 100%; padding: 0.25rem 0.4rem; border: 1px solid #8a8a86; border-radius: 4px; background: #fff; }
+    #count { margin: 0.2rem 0 0.5rem; }
+    .linkpick { margin-top: 0.4rem; border: 1px solid var(--rule); border-radius: 4px; padding: 0.3rem 0.6rem; background: #fafaf8; }
+    .linkpick summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+    .linkpick .lp-body { display: grid; gap: 0.5rem; margin-top: 0.5rem; }
+    .linkpick select[size] { height: 9rem; }
+    dialog { max-width: 46rem; width: calc(100% - 2rem); border: 1px solid #8a8a86; border-radius: 6px; padding: 1rem 1.25rem; }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+    dialog h2 { margin-top: 0; }
+    dialog ul.problems { list-style: none; padding: 0; margin: 0.5rem 0 1rem; }
+    dialog ul.problems li { display: flex; gap: 0.6rem; align-items: baseline; padding: 0.35rem 0; border-bottom: 1px dashed var(--rule); }
+    dialog .badge { flex: none; font-size: 0.75rem; font-weight: 700; padding: 0.05rem 0.4rem; border-radius: 3px; background: #fbe3dd; color: var(--danger); }
+    dialog .badge.note { background: #e7f1fb; color: #1d3fae; }
+    .row.entry { grid-template-columns: 1fr; }
+    .row.entry textarea, .row textarea { width: 100%; }
+    .row.entry .row-tools, .row.entry > button { justify-self: start; }
+    .tabs button { padding: 0.35rem 0.55rem; }
+
+    /* preview panes */
+    #pv { margin-top: 0.6rem; padding: 1rem 1.2rem; border: 1px solid var(--rule); border-radius: 4px; overflow: auto; }
+    .pv-site { background: #fff; font-family: Georgia, "Times New Roman", serif; }
+    .pv-site h1 { font-size: 1.6rem; margin: 0 0 0.8rem; color: #1d2a47; }
+    .pv-site h2 { font-size: 1.05rem; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; margin: 1.6rem 0 0.6rem; }
+    .pv-site .lede { color: #5c6275; font-size: 1.1rem; }
+    .pv-site .meta { display: block; color: #5c6275; font-size: 0.85rem; }
+    .pv-site ul.entries { list-style: none; padding: 0; }
+    .pv-site .revised { color: #5c6275; font-size: 0.85rem; }
+    .pv-site table.grid, .pv95 table.grid { border-collapse: collapse; }
+    .pv-site table.grid th, .pv-site table.grid td { border: 1px solid #ccc; padding: 0.2rem 0.6rem; }
+    .pv95 { background: #c0c0c0; font-family: "Times New Roman", Times, serif; font-size: 16px; line-height: 1.25; color: #000; }
+    .pv95 h1 { font-size: 26px; margin: 0 0 10px; }
+    .pv95 h2 { font-size: 20px; margin: 16px 0 6px; }
+    .pv95 a { color: #0000ee; }
+    .pv95 table { border-collapse: collapse; }
+    .pv95 table.grid th, .pv95 table.grid td, .pv95 table.form th, .pv95 table.form td { border: 1px solid #000; padding: 3px 6px; font-size: 14px; text-align: left; vertical-align: top; }
+    .pv95 table.grid th, .pv95 table.form th { background: #c0c0c0; }
+    .pv95 table.form { width: 100%; margin: 8px 0; }
+    .pv95 table.form td.blank { height: 20px; width: 45%; background: #fff; }
+    .pv95 table.memo th { text-align: left; padding: 1px 12px 1px 0; }
+    .pv95 hr { border: 0; border-top: 2px groove #c0c0c0; }
+    .pv95 .alert { font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; padding: 6px 8px; margin: 0 0 12px; border: 3px double #000; text-align: center; }
+    .pv95 .alert.classified { background: #ff0; }
+    .pv95 .pv-foot { margin-top: 14px; padding-top: 6px; border-top: 2px groove #fff; font: 11px Arial, sans-serif; }
+    .pv95, .pv95 > * { max-width: 40rem; }
+
+    @media (max-width: 760px) {
+      #app { display: block; }
+      .side { border-right: 0; border-bottom: 1px solid var(--rule); }
+      .two, .three, .row.detail, .row.image, .row.file { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <h1>Site editor</h1>
+    <div class="bar-actions">
+      <button type="button" id="btn-open" class="primary">Open site folder</button>
+      <button type="button" id="btn-github">Open from GitHub</button>
+      <label class="file-btn" id="fallback-wrap" hidden>Open data files<input type="file" id="fallback-input" accept=".json,application/json" multiple></label>
+      <button type="button" id="btn-check" hidden>Check site</button>
+      <button type="button" id="btn-download" hidden>Download changed files</button>
+    </div>
+    <p id="status" role="status"></p>
+  </header>
+
+  <section id="welcome">
+    <h2>Edit the site with forms</h2>
+    <p>This page edits the data files for the Affordable Decorating site. It does not need a server and is not part of the site; keep it outside the folder you upload.</p>
+    <p id="welcome-gh"><strong>From any device:</strong> choose <em>Open from GitHub</em>, enter your repository and an access token, and every save is committed straight to the hosted site.</p>
+    <p id="welcome-fs"><strong>Or from a folder on this computer:</strong> choose <em>Open site folder</em> and select the site folder (the one that contains <code>index.html</code> and <code>data</code>). Your browser will ask permission to edit it. Saving writes straight to the data files, and images and downloads you attach are copied into <code>images/</code> and <code>files/</code> for you.</p>
+    <p id="welcome-nofs" hidden><strong>Without GitHub:</strong> this browser cannot edit folders directly, so choose <em>Open data files</em> and select <code>items.json</code>, <code>departments.json</code> and (if present) <code>collections.json</code>, <code>pages.json</code> and <code>intranet.json</code> from the site's <code>data</code> folder. After saving, use <em>Download changed files</em> and replace the originals. Attached images and downloads have to be copied into the site folder by hand; type their paths into the form. For the full experience use Chrome or Edge.</p>
+  </section>
+
+  <div id="app" hidden>
+    <nav class="side" aria-label="Records">
+      <div class="tabs" role="group" aria-label="Record type">
+        <button type="button" data-tab="items" aria-pressed="true">Items</button>
+        <button type="button" data-tab="collections" aria-pressed="false">Collections</button>
+        <button type="button" data-tab="departments" aria-pressed="false">Departments</button>
+        <button type="button" data-tab="pages" aria-pressed="false">Site pages</button>
+        <button type="button" data-tab="intranet" aria-pressed="false">Intranet</button>
+      </div>
+      <input type="search" id="filter" placeholder="Search" aria-label="Search the list">
+      <div id="filterbar" class="filterbar"></div>
+      <p id="count" class="hint" aria-live="polite"></p>
+      <button type="button" id="btn-new" class="primary">New</button>
+      <ul class="list" id="list"></ul>
+    </nav>
+    <main class="main" id="form-area"></main>
+  </div>
+
+<dialog id="gh-dialog" aria-labelledby="gh-title">
+  <h2 id="gh-title">Open from GitHub</h2>
+  <p>Edit the site where it is hosted. Each save becomes a commit in the repository, and GitHub Pages republishes the site a minute or two later. This works on any device, including a phone.</p>
+  <div class="field"><label><span class="lab">Repository</span><input type="text" id="gh-repo" autocomplete="off" placeholder="owner/name, for example affordable-decorating/aff_dec"></label></div>
+  <div class="field"><label><span class="lab">Branch</span><input type="text" id="gh-branch" autocomplete="off" placeholder="main"></label></div>
+  <div class="field"><label><span class="lab">Access token</span><input type="password" id="gh-token" autocomplete="off" placeholder="github_pat_..."></label>
+    <div class="hint">Create one at github.com/settings/personal-access-tokens/new: Repository access, <em>Only select repositories</em>, choose this repository; Repository permissions, <strong>Contents: Read and write</strong>; nothing else. Set an expiry. Treat it like a password: anyone who has it can change the repository.</div></div>
+  <div class="field"><label><input type="checkbox" id="gh-remember"> Remember the token on this device</label>
+    <div class="hint">Stored in this browser only. Leave it unticked on a shared or borrowed computer.</div></div>
+  <p id="gh-msg" role="alert" class="hint"></p>
+  <div class="actions"><button type="button" class="primary" id="gh-connect">Connect</button><button type="button" id="gh-forget">Forget saved token</button><button type="button" id="gh-cancel">Cancel</button></div>
+</dialog>
+
+<dialog id="check-dialog" aria-labelledby="check-title">
+  <h2 id="check-title">Check site</h2>
+  <div id="check-out"></div>
+  <form method="dialog"><button type="submit" class="primary">Close</button></form>
+</dialog>
+
+<script>
+/* Copy of assets/markup.js, used for the previews. Keep the two in step. */
+/*
+  Affordable Decorating: shared text markup.
+
+  Page bodies are plain text with a few simple marks. The text is turned into
+  DOM nodes (never HTML strings), so nothing typed into a body can inject markup.
+
+    Blank line          starts a new paragraph
+    ## Heading          a heading (### for a smaller one)
+    - item              a bulleted list (consecutive lines)
+    1. item             a numbered list (consecutive lines)
+    | a | b |           a table (consecutive lines). If the second line is
+    |---|---|           made of dashes, the first line is the header row.
+    **bold**  *italic*  emphasis
+    [text](address)     a link
+
+  Link addresses may be http(s), mailto, #anchor, a relative path, or one of
+  these shortcuts, resolved against the site root:
+    page:slug        a site page            item:AD-0001      a catalog item
+    dept:slug        a department           collection:slug   a collection
+    intranet:slug    an intranet page       intranet:home     the intranet front
+*/
+(function (global) {
+  "use strict";
+
+  function el(tag, text) {
+    var n = document.createElement(tag);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function resolve(url, root) {
+    url = String(url || "").trim();
+    var m = /^(page|item|dept|collection|intranet):(.*)$/.exec(url);
+    if (m) {
+      var v = encodeURIComponent(m[2].trim());
+      if (m[1] === "page") return root + "page/?id=" + v;
+      if (m[1] === "item") return root + "item/?id=" + v;
+      if (m[1] === "dept") return root + "department/?id=" + v;
+      if (m[1] === "collection") return root + "collection/?id=" + v;
+      if (m[2].trim() === "home") return root + "intranet/";
+      return root + "intranet/page/?id=" + v;
+    }
+    if (/^(https?:|mailto:|#)/i.test(url)) return url;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return null; // javascript:, data:, etc.
+    return url;
+  }
+
+  var INLINE = /\*\*([^*]+)\*\*|\*([^*]+)\*|\[([^\]]+)\]\(([^)]+)\)/g;
+
+  function inline(text, parent, root) {
+    var last = 0, m;
+    INLINE.lastIndex = 0;
+    while ((m = INLINE.exec(text))) {
+      if (m.index > last) parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+      if (m[1] != null) parent.appendChild(el("strong", m[1]));
+      else if (m[2] != null) parent.appendChild(el("em", m[2]));
+      else {
+        var href = resolve(m[4], root);
+        if (href == null) parent.appendChild(document.createTextNode(m[3]));
+        else { var a = el("a", m[3]); a.setAttribute("href", href); parent.appendChild(a); }
+      }
+      last = INLINE.lastIndex;
+    }
+    if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  function splitRow(line) {
+    var s = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+    return s.split("|").map(function (c) { return c.trim(); });
+  }
+
+  function render(text, options) {
+    options = options || {};
+    var root = options.root || "./";
+    var frag = document.createDocumentFragment();
+    var blocks = String(text || "").replace(/\r\n?/g, "\n").split(/\n\s*\n/);
+    var headingCount = 0;
+
+    blocks.forEach(function (block) {
+      block = block.replace(/^\n+|\s+$/g, "");
+      if (!block.trim()) return;
+      var lines = block.split("\n");
+
+      // A block may begin with a heading line followed by more content.
+      while (lines.length && /^#{2,3} /.test(lines[0])) {
+        var level = lines[0].indexOf("### ") === 0 ? "h3" : "h2";
+        var h = el(level);
+        var label = lines[0].replace(/^#{2,3} /, "");
+        if (level === "h2" && options.numberHeadings) { headingCount += 1; label = headingCount + ". " + label; }
+        inline(label, h, root);
+        frag.appendChild(h);
+        lines.shift();
+      }
+      if (!lines.length) return;
+
+      if (lines.every(function (l) { return /^- /.test(l); })) {
+        var ul = el("ul");
+        lines.forEach(function (l) { var li = el("li"); inline(l.slice(2), li, root); ul.appendChild(li); });
+        frag.appendChild(ul);
+      } else if (lines.every(function (l) { return /^\d+\. /.test(l); })) {
+        var ol = el("ol");
+        lines.forEach(function (l) { var li = el("li"); inline(l.replace(/^\d+\. /, ""), li, root); ol.appendChild(li); });
+        frag.appendChild(ol);
+      } else if (lines.every(function (l) { return /^\|/.test(l.trim()); })) {
+        var table = el("table");
+        table.className = "grid";
+        var rows = lines.slice();
+        var header = null;
+        if (rows.length > 1 && /^\|?[\s:|-]+\|?$/.test(rows[1]) && /-/.test(rows[1])) {
+          header = splitRow(rows[0]);
+          rows.splice(0, 2);
+        }
+        if (header) {
+          var tr = el("tr");
+          header.forEach(function (c) { var th = el("th"); inline(c, th, root); tr.appendChild(th); });
+          var thead = el("thead"); thead.appendChild(tr); table.appendChild(thead);
+        }
+        var tbody = el("tbody");
+        rows.forEach(function (r) {
+          var tr2 = el("tr");
+          splitRow(r).forEach(function (c) { var td = el("td"); inline(c, td, root); tr2.appendChild(td); });
+          tbody.appendChild(tr2);
+        });
+        table.appendChild(tbody);
+        frag.appendChild(table);
+      } else {
+        var p = el("p");
+        lines.forEach(function (l, i) {
+          if (i) p.appendChild(document.createElement("br"));
+          inline(l, p, root);
+        });
+        frag.appendChild(p);
+      }
+    });
+    return frag;
+  }
+
+  global.ADMarkup = { render: render, resolve: resolve };
+})(window);
+</script>
+<script>
+(function () {
+  "use strict";
+
+  var FILES = { items: "items.json", departments: "departments.json", collections: "collections.json", pages: "pages.json", intranet: "intranet.json" };
+  var OPTIONAL = { collections: 1, pages: 1, intranet: 1 };   // files that may not exist yet
+  var ITEM_KEYS = ["id", "department", "collection", "title", "description", "condition", "status", "details", "images", "files", "inquiry", "added", "draft", "hidden"];
+  var DEFAULT_EMAIL = "kylebdoeden@gmail.com";
+
+  var state = {
+    dir: null,
+    mode: null,               // "fs" (folder), "gh" (GitHub repository) or "files" (loose json files)
+    gh: null,                 // { repo, branch, token, shas, tree } while connected to GitHub
+    data: { items: [], departments: [], collections: [], pages: [], intranet: [] },
+    dirty: {},                // kinds not yet written to disk (files mode)
+    tab: "items",
+    sel: { items: null, collections: null, departments: null, pages: null, intranet: null },   // key of selected record, null = new
+    formDirty: false,
+    slugTouched: false,
+    prefill: null,
+    filters: { items: {}, collections: {}, departments: {}, pages: {}, intranet: {} },
+    sort: {}
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  function el(tag, attrs, kids) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (key) {
+      if (key === "text") node.textContent = attrs[key];
+      else node.setAttribute(key, attrs[key]);
+    });
+    (kids || []).forEach(function (kid) {
+      node.appendChild(typeof kid === "string" ? document.createTextNode(kid) : kid);
+    });
+    return node;
+  }
+
+  function setStatus(message, kind) {
+    var s = $("status");
+    s.textContent = message || "";
+    s.className = kind || "";
+  }
+
+  function todayISO() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  function slugify(text) {
+    return String(text || "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  function natural(a, b) { return String(a).localeCompare(String(b), undefined, { numeric: true }); }
+
+  function nextItemId() {
+    var max = 0;
+    state.data.items.forEach(function (item) {
+      var m = /^AD-(\d+)$/i.exec(item.id || "");
+      if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return "AD-" + String(max + 1).padStart(4, "0");
+  }
+
+  function departmentName(slug) {
+    var d = state.data.departments.filter(function (x) { return x.slug === slug; })[0];
+    return d ? d.name : slug;
+  }
+
+  function collectionName(slug) {
+    var c = state.data.collections.filter(function (x) { return x.slug === slug; })[0];
+    return c ? c.name : slug;
+  }
+
+  // ---------- disk access ----------
+
+  async function getDir(parts, create) {
+    var dir = state.dir;
+    for (var i = 0; i < parts.length; i++) dir = await dir.getDirectoryHandle(parts[i], { create: !!create });
+    return dir;
+  }
+
+  async function writeToPath(path, content) {
+    if (state.mode === "gh") return ghWriteFile(path, content);
+    var parts = path.split("/");
+    var name = parts.pop();
+    var dir = await getDir(parts, true);
+    var handle = await dir.getFileHandle(name, { create: true });
+    var writable = await handle.createWritable();
+    await writable.write(content);
+    await writable.close();
+  }
+
+  async function pathExists(path) {
+    if (state.mode === "gh") return ghExists(path);
+    var parts = path.split("/");
+    var name = parts.pop();
+    try {
+      var dir = await getDir(parts, false);
+      await dir.getFileHandle(name);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function uniquePath(folder, filename) {
+    var dot = filename.lastIndexOf(".");
+    var base = dot > 0 ? filename.slice(0, dot) : filename;
+    var ext = dot > 0 ? filename.slice(dot) : "";
+    var candidate = folder + "/" + filename;
+    var n = 2;
+    while (await pathExists(candidate)) {
+      candidate = folder + "/" + base + "-" + n + ext;
+      n++;
+    }
+    return candidate;
+  }
+
+  function serialize(kind) { return JSON.stringify(state.data[kind], null, 2) + "\n"; }
+
+  async function persist(kind) {
+    if (state.mode === "fs") {
+      await writeToPath("data/" + FILES[kind], serialize(kind));
+    } else if (state.mode === "gh") {
+      await ghSaveData(kind);
+    } else {
+      state.dirty[kind] = true;
+      updateDownloadButton();
+    }
+  }
+
+  function updateDownloadButton() {
+    var kinds = Object.keys(state.dirty).filter(function (k) { return state.dirty[k]; });
+    var btn = $("btn-download");
+    btn.hidden = state.mode !== "files" || !kinds.length;
+    btn.textContent = "Download changed files (" + kinds.map(function (k) { return FILES[k]; }).join(", ") + ")";
+  }
+
+  function downloadChanged() {
+    Object.keys(state.dirty).forEach(function (kind) {
+      if (!state.dirty[kind]) return;
+      var blob = new Blob([serialize(kind)], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = FILES[kind];
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      state.dirty[kind] = false;
+    });
+    updateDownloadButton();
+    setStatus("Downloaded. Replace the files in the site's data folder with them.", "ok");
+  }
+
+  // ---------- GitHub ----------
+
+  // Mode "gh": the data files and uploads are read from and committed to a GitHub repository
+  // through GitHub's REST API. The token never leaves this page except in requests to api.github.com.
+
+  function canWrite() { return state.mode === "fs" || state.mode === "gh"; }
+  function savedNote(file) {
+    if (state.mode === "fs") return file ? " to data/" + file + "." : ".";
+    if (state.mode === "gh") return " to GitHub. The live site updates in a minute or two.";
+    return ". Download the changed file when you are done.";
+  }
+
+  function toB64(content) {
+    return new Promise(function (resolve, reject) {
+      var blobPromise = typeof content === "string" ? Promise.resolve(new TextEncoder().encode(content)) : content.arrayBuffer().then(function (b) { return new Uint8Array(b); });
+      blobPromise.then(function (bytes) {
+        var out = "", chunk = 0x8000;
+        for (var i = 0; i < bytes.length; i += chunk) out += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        resolve(btoa(out));
+      }, reject);
+    });
+  }
+  function fromB64(b64) {
+    var bin = atob(String(b64).replace(/\s/g, ""));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  async function ghFetch(path, options) {
+    var g = state.gh;
+    options = options || {};
+    var headers = { "Authorization": "Bearer " + g.token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+    if (options.body) headers["Content-Type"] = "application/json";
+    var res;
+    try {
+      res = await fetch("https://api.github.com/repos/" + g.repo + path, { method: options.method || "GET", headers: headers, body: options.body, cache: "no-store" });
+    } catch (e) {
+      throw new Error("Could not reach GitHub. Check your connection.");
+    }
+    return res;
+  }
+  function ghEncodePath(path) { return path.split("/").map(encodeURIComponent).join("/"); }
+  async function ghError(res, what) {
+    var detail = "";
+    try { detail = (await res.json()).message || ""; } catch (e) {}
+    if (res.status === 401) return new Error("GitHub rejected the token (it may have expired). Open from GitHub again with a new one.");
+    if (res.status === 403) return new Error("GitHub refused " + what + ": " + (detail || "the token may lack Contents read and write access, or you hit a rate limit") + ".");
+    if (res.status === 404) return new Error("GitHub could not find " + what + ". Check the repository name, the branch, and that the token can access this repository.");
+    if (res.status === 409 || res.status === 422) return new Error("GitHub says " + what + " changed since you opened it (" + (detail || "conflict") + "). Open from GitHub again to reload, then redo your change.");
+    return new Error("GitHub error " + res.status + " for " + what + (detail ? ": " + detail : "") + ".");
+  }
+
+  async function ghReadData(file) {
+    var res = await ghFetch("/contents/data/" + file + "?ref=" + encodeURIComponent(state.gh.branch));
+    if (res.status === 404) return { text: null, sha: null };
+    if (!res.ok) throw await ghError(res, "data/" + file);
+    var meta = await res.json();
+    var text;
+    if (meta.content) text = fromB64(meta.content);
+    else {
+      var blob = await ghFetch("/git/blobs/" + meta.sha);
+      if (!blob.ok) throw await ghError(blob, "data/" + file);
+      text = fromB64((await blob.json()).content);
+    }
+    return { text: text, sha: meta.sha };
+  }
+
+  async function ghSaveData(kind) {
+    var path = "data/" + FILES[kind];
+    var sha = state.gh.shas[kind];
+    var body = { message: "Update " + FILES[kind] + " (site editor)", content: await toB64(serialize(kind)), branch: state.gh.branch };
+    if (sha) body.sha = sha;
+    var res = await ghFetch("/contents/" + path, { method: "PUT", body: JSON.stringify(body) });
+    if (!res.ok) throw await ghError(res, path);
+    state.gh.shas[kind] = (await res.json()).content.sha;
+  }
+
+  var GH_MAX_UPLOAD = 25 * 1024 * 1024;
+  async function ghWriteFile(path, content) {
+    if (typeof content !== "string" && content.size > GH_MAX_UPLOAD) {
+      throw new Error(path + " is larger than 25 MB, which is too big to upload from the browser. Add it with GitHub Desktop or the GitHub website instead.");
+    }
+    var body = { message: "Add " + path + " (site editor)", content: await toB64(content), branch: state.gh.branch };
+    var res = await ghFetch("/contents/" + ghEncodePath(path), { method: "PUT", body: JSON.stringify(body) });
+    if (!res.ok) throw await ghError(res, path);
+    state.gh.tree = null;
+  }
+
+  async function ghExists(path) {
+    var res = await ghFetch("/contents/" + ghEncodePath(path) + "?ref=" + encodeURIComponent(state.gh.branch));
+    if (res.status === 404) return false;
+    if (!res.ok) throw await ghError(res, path);
+    return true;
+  }
+
+  // Every path in the repository, fetched once per check (used by Check site).
+  async function ghTree() {
+    if (state.gh.tree) return state.gh.tree;
+    var res = await ghFetch("/git/trees/" + encodeURIComponent(state.gh.branch) + "?recursive=1");
+    if (!res.ok) throw await ghError(res, "the repository file list");
+    var set = {};
+    (await res.json()).tree.forEach(function (t) { set[t.path] = true; });
+    state.gh.tree = set;
+    return set;
+  }
+  async function siteHasPath(path) {
+    if (state.mode === "gh") return !!(await ghTree())[path];
+    return pathExists(path);
+  }
+
+  function parseRepo(text) {
+    var m = /^(?:https?:\/\/github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/.exec(String(text).trim());
+    return m ? m[1] + "/" + m[2] : null;
+  }
+  function lsGet(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+  function lsSet(k, v) { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} }
+
+  function openGithubDialog() {
+    $("gh-repo").value = lsGet("ad-gh-repo");
+    $("gh-branch").value = lsGet("ad-gh-branch") || "main";
+    $("gh-token").value = lsGet("ad-gh-token");
+    $("gh-remember").checked = !!lsGet("ad-gh-token");
+    $("gh-msg").textContent = "";
+    $("gh-dialog").showModal();
+  }
+
+  async function connectGithub() {
+    var msg = $("gh-msg");
+    var repo = parseRepo($("gh-repo").value);
+    var branch = $("gh-branch").value.trim() || "main";
+    var token = $("gh-token").value.trim();
+    if (!repo) { msg.textContent = "Enter the repository as owner/name, for example affordable-decorating/aff_dec."; return; }
+    if (!token) { msg.textContent = "Paste your access token."; return; }
+    msg.textContent = "Connecting...";
+    var previous = state.gh;
+    state.gh = { repo: repo, branch: branch, token: token, shas: {}, tree: null };
+    try {
+      var loaded = {};
+      for (var kind in FILES) {
+        var r = await ghReadData(FILES[kind]);
+        if (r.text === null) {
+          if (kind === "items" || kind === "departments") throw new Error("data/" + FILES[kind] + " was not found in " + repo + " on " + branch + ". Is this the site repository?");
+          loaded[kind] = [];
+        } else {
+          try { loaded[kind] = asArray(JSON.parse(r.text), FILES[kind]); } catch (e) { throw new Error("Could not read data/" + FILES[kind] + ": " + e.message); }
+        }
+        state.gh.shas[kind] = r.sha;
+      }
+      lsSet("ad-gh-repo", repo); lsSet("ad-gh-branch", branch);
+      lsSet("ad-gh-token", $("gh-remember").checked ? token : "");
+      state.dir = null;
+      state.data = loaded;
+      state.dirty = {};
+      $("gh-dialog").close();
+      startEditing("gh");
+      updateDownloadButton();
+      setStatus("Connected to " + repo + " (" + branch + "): " + loaded.items.length + " items, " + loaded.pages.length + " site pages, " + loaded.intranet.length + " intranet pages. Saving commits straight to GitHub.", "ok");
+    } catch (e) {
+      state.gh = previous;
+      msg.textContent = e.message;
+    }
+  }
+
+  // ---------- loading ----------
+
+  function asArray(value, name) {
+    if (!Array.isArray(value)) throw new Error(name + " must contain a list.");
+    return value;
+  }
+
+  function startEditing(mode) {
+    state.mode = mode;
+    $("welcome").hidden = true;
+    $("app").hidden = false;
+    $("btn-check").hidden = false;
+    state.sel = { items: null, collections: null, departments: null, pages: null, intranet: null };
+    state.formDirty = false;
+    renderAll();
+  }
+
+  async function openFolder() {
+    try {
+      var dir = await window.showDirectoryPicker({ mode: "readwrite" });
+      var dataDir;
+      try {
+        dataDir = await dir.getDirectoryHandle("data");
+      } catch (e) {
+        setStatus("That folder has no data folder. Choose the site folder, the one with index.html in it.", "error");
+        return;
+      }
+      state.dir = dir;
+      var loaded = {};
+      for (var kind in FILES) {
+        try {
+          var fh = await dataDir.getFileHandle(FILES[kind]);
+          loaded[kind] = asArray(JSON.parse(await (await fh.getFile()).text()), FILES[kind]);
+        } catch (e) {
+          if (OPTIONAL[kind] && e && e.name === "NotFoundError") loaded[kind] = [];
+          else throw new Error("Could not read " + FILES[kind] + ": " + e.message);
+        }
+      }
+      state.data = loaded;
+      state.dirty = {};
+      startEditing("fs");
+      setStatus("Opened " + dir.name + ": " + loaded.items.length + " items, " + loaded.collections.length + " collections, " + loaded.departments.length + " departments, " + loaded.pages.length + " site pages, " + loaded.intranet.length + " intranet pages.", "ok");
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      setStatus(e.message, "error");
+    }
+  }
+
+  async function openLooseFiles(fileList) {
+    try {
+      var loaded = { items: null, departments: null, collections: [], pages: [], intranet: [] };
+      for (var i = 0; i < fileList.length; i++) {
+        var f = fileList[i];
+        for (var kind in FILES) {
+          if (f.name === FILES[kind]) loaded[kind] = asArray(JSON.parse(await f.text()), f.name);
+        }
+      }
+      if (!loaded.items || !loaded.departments) {
+        setStatus("Select at least items.json and departments.json (collections.json, pages.json and intranet.json too, if they exist).", "error");
+        return;
+      }
+      state.dir = null;
+      state.data = loaded;
+      state.dirty = {};
+      updateDownloadButton();
+      startEditing("files");
+      setStatus("Opened " + loaded.items.length + " items. Changes stay in this page until you download the files.", "ok");
+    } catch (e) {
+      setStatus("Could not read the files: " + e.message, "error");
+    }
+  }
+
+  // ---------- list ----------
+
+  // Each tab can be filtered by a few fields and sorted several ways.
+  var SORTS = {
+    items: [["number", "Number"], ["newest", "Newest catalogued"], ["oldest", "Oldest catalogued"], ["title", "Title"], ["department", "Department"]],
+    collections: [["name", "Name"], ["count", "Most items"]],
+    departments: [["file", "As listed on the site"], ["name", "Name"], ["count", "Most items"]],
+    pages: [["title", "Title"], ["type", "Type"], ["menu", "Menu position"], ["revised", "Recently revised"]],
+    intranet: [["type", "Type, then title"], ["newest", "Newest"], ["oldest", "Oldest"], ["title", "Title"], ["number", "Form or policy number"], ["owner", "Owner"]]
+  };
+  var DEFAULT_SORT = { items: "number", collections: "name", departments: "file", pages: "title", intranet: "type" };
+  var DRAFT_OPTS = [["", "Drafts and published"], ["yes", "Drafts only"], ["no", "Published only"]];
+
+  function filterDefs(tab) {
+    var depts = state.data.departments.map(function (d) { return [d.slug, d.name]; });
+    var colls = [["(none)", "(no collection)"]].concat(state.data.collections.map(function (c) { return [c.slug, c.name]; }));
+    var statuses = [];
+    state.data.items.forEach(function (i) { var v = i.status || "(none)"; if (statuses.indexOf(v) === -1) statuses.push(v); });
+    var all = function (label, list) { return { label: label, options: [["", "Any"]].concat(list) }; };
+    if (tab === "items") return {
+      draft: { label: "Draft", options: DRAFT_OPTS }, department: all("Department", depts), collection: all("Collection", colls),
+      status: all("Status", statuses.sort().map(function (v) { return [v, v]; }))
+    };
+    if (tab === "pages") return {
+      draft: { label: "Draft", options: DRAFT_OPTS },
+      type: all("Type", PAGE_TYPES.map(function (t) { return [t.value, t.label.replace(/ \(.*\)/, "")]; })),
+      menu: all("Menu", [["main", "Main menu"], ["about", "About group"], ["none", "Not in menu"]])
+    };
+    if (tab === "intranet") return {
+      draft: { label: "Draft", options: DRAFT_OPTS },
+      type: all("Type", INTRANET_TYPES.map(function (t) { return [t.value, t.label.replace(/ \(.*\)/, "")]; })),
+      access: all("Access", [["all", "All staff"], ["restricted", "Restricted"], ["classified", "Classified"]]),
+      status: all("Status", [["current", "Current"], ["superseded", "Superseded"], ["withdrawn", "Withdrawn"]])
+    };
+    return {};
+  }
+
+  function allRows(tab) {
+    var D = state.data, rows;
+    function count(field, slug) { return D.items.filter(function (i) { return i[field] === slug; }).length; }
+    if (tab === "items") {
+      rows = D.items.map(function (item) {
+        return { key: item.id, title: item.id + "  " + (item.title || ""), sub: draftTag(item) + departmentName(item.department) + (item.collection ? ", " + collectionName(item.collection) : ""),
+          haystack: [item.id, item.title, departmentName(item.department), item.collection, item.description].join(" "),
+          a: { draft: item.draft ? "yes" : "no", department: item.department, collection: item.collection || "(none)", status: item.status || "(none)" },
+          s: { number: item.id, title: item.title || "", date: item.added || "", department: departmentName(item.department) } };
+      });
+    } else if (tab === "collections") {
+      rows = D.collections.map(function (c) {
+        var n = count("collection", c.slug);
+        return { key: c.slug, title: c.name, sub: n + (n === 1 ? " item" : " items"), haystack: [c.name, c.slug, departmentName(c.department)].join(" "), a: {}, s: { name: c.name, count: n } };
+      });
+    } else if (tab === "pages") {
+      rows = D.pages.map(function (p, idx) {
+        var where = p.menu === "main" ? "main menu" : p.menu === "about" ? "about group" : "not in menu";
+        return { key: p.slug, title: p.title || p.slug, sub: draftTag(p) + labelOf(PAGE_TYPES, p.type).replace(/ \(.*\)/, "") + ", " + (p.listed === false ? "unlisted" : where),
+          haystack: [p.title, p.slug, p.type, p.body].join(" "),
+          a: { draft: p.draft ? "yes" : "no", type: p.type, menu: p.menu || "none" },
+          s: { title: p.title || "", type: p.type, menu: (p.menu === "main" ? "1" : p.menu === "about" ? "2" : "3") + String(1000 + (Number(p.order) || 0)), revised: p.revised || "" } };
+      });
+    } else if (tab === "intranet") {
+      rows = D.intranet.map(function (p) {
+        var bits = [labelOf(INTRANET_TYPES, p.type).replace(/ \(.*\)/, ""), fmt95(p.issued)];
+        if (p.draft) bits.unshift("DRAFT");
+        if (p.access && p.access !== "all") bits.push(p.access);
+        if (p.status && p.status !== "current") bits.push(p.status);
+        return { key: p.slug, title: p.title || p.slug, sub: bits.join(", "),
+          haystack: [p.title, p.slug, p.type, p.owner, p.number, p.body].join(" "),
+          a: { draft: p.draft ? "yes" : "no", type: p.type, access: p.access || "all", status: p.status || "current" },
+          s: { type: p.type, title: p.title || "", date: p.issued || "", number: p.number || "", owner: p.owner || "" } };
+      });
+    } else {
+      rows = D.departments.map(function (d, idx) {
+        var n = count("department", d.slug);
+        return { key: d.slug, title: d.name, sub: n + (n === 1 ? " item" : " items"), haystack: [d.name, d.slug].join(" "), a: {}, s: { name: d.name, count: n, file: idx } };
+      });
+    }
+    return rows;
+  }
+
+  function sortRows(tab, rows) {
+    var mode = state.sort[tab] || DEFAULT_SORT[tab];
+    var by = function (field, dir) { return function (x, y) { var r = natural(x.s[field], y.s[field]); return dir === "desc" ? -r : r; }; };
+    var then = function () {
+      var fns = arguments;
+      return function (x, y) { for (var i = 0; i < fns.length; i++) { var r = fns[i](x, y); if (r) return r; } return 0; };
+    };
+    var cmp = {
+      "items:number": by("number"), "items:newest": then(by("date", "desc"), by("number", "desc")), "items:oldest": then(by("date"), by("number")),
+      "items:title": by("title"), "items:department": then(by("department"), by("number")),
+      "collections:name": by("name"), "collections:count": then(by("count", "desc"), by("name")),
+      "departments:file": by("file"), "departments:name": by("name"), "departments:count": then(by("count", "desc"), by("name")),
+      "pages:title": by("title"), "pages:type": then(by("type"), by("title")), "pages:menu": then(by("menu"), by("title")), "pages:revised": then(by("revised", "desc"), by("title")),
+      "intranet:type": then(by("type"), by("title")), "intranet:newest": then(by("date", "desc"), by("title")), "intranet:oldest": then(by("date"), by("title")),
+      "intranet:title": by("title"), "intranet:number": then(by("number"), by("title")), "intranet:owner": then(by("owner"), by("title"))
+    }[tab + ":" + mode] || by("title");
+    return rows.slice().sort(cmp);
+  }
+
+  function currentList() {
+    var text = $("filter").value.trim().toLowerCase();
+    var tab = state.tab;
+    var f = state.filters[tab] || {};
+    var rows = allRows(tab);
+    var total = rows.length;
+    rows = rows.filter(function (r) {
+      for (var k in f) if (f[k] && r.a[k] !== f[k]) return false;
+      return !text || r.haystack.toLowerCase().indexOf(text) !== -1;
+    });
+    rows = sortRows(tab, rows);
+    rows.total = total;
+    return rows;
+  }
+
+  // The sort menu and filter menus above the list. Rebuilt when the tab or the data changes.
+  function renderFilters() {
+    var box = $("filterbar");
+    box.textContent = "";
+    var tab = state.tab;
+    var sortSel = el("select", { "aria-label": "Sort the list" });
+    SORTS[tab].forEach(function (o) {
+      var opt = el("option", { value: o[0], text: "Sort: " + o[1] });
+      if ((state.sort[tab] || DEFAULT_SORT[tab]) === o[0]) opt.selected = true;
+      sortSel.appendChild(opt);
+    });
+    sortSel.addEventListener("change", function () { state.sort[tab] = sortSel.value; renderList(); });
+    box.appendChild(sortSel);
+    var defs = filterDefs(tab);
+    Object.keys(defs).forEach(function (k) {
+      var sel = el("select", { "aria-label": "Filter by " + defs[k].label.toLowerCase() });
+      defs[k].options.forEach(function (o) {
+        var opt = el("option", { value: o[0], text: o[0] === "" && k !== "draft" ? defs[k].label + ": any" : o[1] });
+        if ((state.filters[tab][k] || "") === o[0]) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      sel.addEventListener("change", function () { state.filters[tab][k] = sel.value; renderList(); });
+      box.appendChild(sel);
+    });
+    var clear = el("button", { type: "button", "class": "link", text: "Clear filters", id: "clear-filters" });
+    clear.addEventListener("click", function () { state.filters[tab] = {}; $("filter").value = ""; renderFilters(); renderList(); });
+    box.appendChild(clear);
+  }
+
+  function renderList() {
+    var list = $("list");
+    list.textContent = "";
+    var rows = currentList();
+    var filtered = rows.length !== rows.total;
+    $("count").textContent = filtered ? rows.length + " of " + rows.total : rows.total + (rows.total === 1 ? " record" : " records");
+    $("clear-filters").hidden = !(filtered || ($("filter").value.trim() !== ""));
+    if (!rows.length) list.appendChild(el("li", { "class": "hint", text: rows.total ? "Nothing matches the filters." : "Nothing here yet." }));
+    rows.forEach(function (r) {
+      var btn = el("button", { type: "button" }, [r.title, el("span", { "class": "sub", text: r.sub })]);
+      if (state.sel[state.tab] === r.key) btn.setAttribute("aria-current", "true");
+      btn.addEventListener("click", function () { selectRecord(r.key); });
+      list.appendChild(el("li", {}, [btn]));
+    });
+    var names = { items: "item", collections: "collection", departments: "department", pages: "site page", intranet: "intranet page" };
+    $("btn-new").textContent = "New " + names[state.tab];
+  }
+
+  function confirmDiscard() {
+    return !state.formDirty || window.confirm("Discard the unsaved changes in the form?");
+  }
+
+  function selectRecord(key) {
+    if (!confirmDiscard()) return;
+    state.sel[state.tab] = key;
+    state.formDirty = false;
+    state.slugTouched = true;
+    renderAll();
+  }
+
+  function newRecord() {
+    if (!confirmDiscard()) return;
+    state.sel[state.tab] = null;
+    state.formDirty = false;
+    state.slugTouched = false;
+    renderAll();
+  }
+
+  function switchTab(tab) {
+    if (tab === state.tab) return;
+    if (!confirmDiscard()) return;
+    state.tab = tab;
+    state.formDirty = false;
+    state.slugTouched = state.sel[tab] !== null;
+    $("filter").value = "";
+    document.querySelectorAll(".tabs button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-tab") === tab ? "true" : "false");
+    });
+    renderAll();
+  }
+
+  // ---------- form helpers ----------
+
+  var hintCounter = 0;
+
+  function field(labelText, control, hint) {
+    var wrap = el("div", { "class": "field" });
+    wrap.appendChild(el("label", {}, [el("span", { "class": "lab", text: labelText }), control]));
+    if (hint) {
+      var id = "hint-" + (++hintCounter);
+      wrap.appendChild(el("div", { "class": "hint", id: id, text: hint }));
+      control.setAttribute("aria-describedby", id);
+    }
+    return wrap;
+  }
+
+  function textInput(id, value) {
+    var i = el("input", { type: "text", id: id, autocomplete: "off" });
+    i.value = value || "";
+    return i;
+  }
+
+  function textArea(id, value, rows) {
+    var t = el("textarea", { id: id, rows: String(rows || 3) });
+    t.value = value || "";
+    return t;
+  }
+
+  function select(id, options, value) {
+    var s = el("select", { id: id });
+    options.forEach(function (o) {
+      var opt = el("option", { value: o.value, text: o.label });
+      if (o.value === value) opt.selected = true;
+      s.appendChild(opt);
+    });
+    return s;
+  }
+
+  function mini(label, cls, value) {
+    var input = el("input", { type: "text", "class": cls, autocomplete: "off" });
+    input.value = value || "";
+    return el("label", { "class": "mini" }, [el("span", { text: label }), input]);
+  }
+
+  function removeButton(row) {
+    var b = el("button", { type: "button", "class": "link", text: "Remove" });
+    b.addEventListener("click", function () { row.remove(); state.formDirty = true; });
+    return b;
+  }
+
+  function showErrors(messages) {
+    var box = $("errors");
+    if (!box) return;
+    box.textContent = "";
+    if (!messages.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.appendChild(el("strong", { text: messages.length === 1 ? "One thing to fix:" : "Things to fix:" }));
+    var ul = el("ul");
+    messages.forEach(function (m) { ul.appendChild(el("li", { text: m })); });
+    box.appendChild(ul);
+    box.scrollIntoView({ block: "nearest" });
+  }
+
+  // ---------- drafts and duplicates ----------
+
+  // A draft is saved in the data but skipped by the site, as if it did not exist.
+  function draftField(rec) {
+    return checkField("f-draft", "Draft (hidden from the site until you untick this)", rec.draft, "The data file is still uploaded with the site, so a draft is hidden from visitors, not secret.");
+  }
+  function takePrefill() { var p = state.prefill; state.prefill = null; return p; }
+  function duplicateButton(kind, make) {
+    var b = el("button", { type: "button", text: "Duplicate as new draft" });
+    b.addEventListener("click", function () {
+      if (!confirmDiscard()) return;
+      var src = currentRecordFor(kind);
+      state.prefill = make(JSON.parse(JSON.stringify(src)));
+      state.sel[kind] = null;
+      state.formDirty = true;
+      state.slugTouched = false;
+      renderAll();
+    });
+    return b;
+  }
+  function currentRecordFor(kind) {
+    var key = state.sel[kind];
+    return state.data[kind].filter(function (r) { return (kind === "items" ? r.id : r.slug) === key; })[0];
+  }
+  function draftTag(r) { return r.draft ? "DRAFT, " : ""; }
+
+  // ---------- item form ----------
+
+  function detailRow(d) {
+    var row = el("div", { "class": "row detail" });
+    row.appendChild(mini("Label (for example Medium)", "d-label", d && d.label));
+    row.appendChild(mini("Value", "d-value", d && d.value));
+    row.appendChild(removeButton(row));
+    return row;
+  }
+
+  function pickButton(row, folder, accept, pathInputClass) {
+    var input = el("input", { type: "file", accept: accept });
+    var label = el("label", { "class": "file-btn" }, ["Choose file", input]);
+    input.addEventListener("change", async function () {
+      var f = input.files[0];
+      if (!f) return;
+      var id = slugify($("f-id").value) || "item";
+      var dot = f.name.lastIndexOf(".");
+      var ext = dot > 0 ? f.name.slice(dot).toLowerCase() : "";
+      var base = slugify(dot > 0 ? f.name.slice(0, dot) : f.name) || "file";
+      var path = await uniquePath(folder, id + "-" + base + ext);
+      row._file = f;
+      row.querySelector("." + pathInputClass).value = path;
+      state.formDirty = true;
+    });
+    return label;
+  }
+
+  function imageRow(img) {
+    var row = el("div", { "class": "row image" });
+    row.appendChild(mini("Path", "i-path", img && img.src));
+    row.appendChild(mini("Alt text (describes the image)", "i-alt", img && img.alt));
+    row.appendChild(mini("Caption (optional)", "i-caption", img && img.caption));
+    var tools = el("div", { "class": "row-tools" });
+    if (canWrite()) tools.appendChild(pickButton(row, "images", "image/*", "i-path"));
+    tools.appendChild(removeButton(row));
+    row.appendChild(tools);
+    return row;
+  }
+
+  function fileRow(f) {
+    var row = el("div", { "class": "row file" });
+    row.appendChild(mini("Link text (for example Print file, STL)", "f-label", f && f.label));
+    row.appendChild(mini("Path", "f-path", f && f.path));
+    var tools = el("div", { "class": "row-tools" });
+    if (canWrite()) tools.appendChild(pickButton(row, "files", "", "f-path"));
+    tools.appendChild(removeButton(row));
+    row.appendChild(tools);
+
+    var source = el("select", { "class": "f-source" });
+    [["", "(not stated)"], ["scan", "Scan of an item in the warehouse"], ["reconstruction", "Reconstructed from a blueprint (item not found)"]].forEach(function (o) {
+      var opt = el("option", { value: o[0], text: o[1] });
+      if ((f && f.source || "") === o[0]) opt.selected = true;
+      source.appendChild(opt);
+    });
+    var sub = el("div", { "class": "sub" }, [
+      el("label", { "class": "mini" }, [el("span", { text: "Origin of this file" }), source]),
+      mini("Blueprint or scan reference (optional)", "f-ref", f && f.reference)
+    ]);
+    row.appendChild(sub);
+    return row;
+  }
+
+  function group(legend, rowsContainerId, rows, addLabel, makeRow, hint) {
+    var fs = el("fieldset", { "class": "group" }, [el("legend", { text: legend })]);
+    if (hint) fs.appendChild(el("div", { "class": "hint", text: hint }));
+    var box = el("div", { id: rowsContainerId });
+    rows.forEach(function (r) { box.appendChild(makeRow(r)); });
+    fs.appendChild(box);
+    var add = el("button", { type: "button", text: addLabel });
+    add.addEventListener("click", function () { box.appendChild(makeRow(null)); state.formDirty = true; });
+    fs.appendChild(el("div", { "class": "actions" }, [add]));
+    return fs;
+  }
+
+  function collectItem() {
+    var errors = [];
+    var original = state.sel.items !== null ? state.data.items.filter(function (i) { return i.id === state.sel.items; })[0] : null;
+    var id = $("f-id").value.trim();
+    var title = $("f-title").value.trim();
+    var department = $("f-department").value;
+    var collection = $("f-collection").value;
+    var added = $("f-added").value.trim();
+
+    if (!id) errors.push("Give the item an inventory number.");
+    else if (/\s/.test(id)) errors.push("The inventory number cannot contain spaces.");
+    else if (state.data.items.some(function (i) { return i.id === id && (!original || i !== original); })) errors.push("Another item already uses " + id + ".");
+    if (!title) errors.push("Give the item a title.");
+    if (!department) errors.push("Choose a department.");
+    if (added && !/^\d{4}-\d{2}-\d{2}$/.test(added)) errors.push("The catalogued date must look like 2026-10-21.");
+
+    var details = [];
+    document.querySelectorAll("#rows-details .row").forEach(function (row) {
+      var label = row.querySelector(".d-label").value.trim();
+      var value = row.querySelector(".d-value").value.trim();
+      if (!label && !value) return;
+      if (!label) { errors.push("A detail has a value but no label."); return; }
+      details.push({ label: label, value: value });
+    });
+
+    var images = [];
+    var writes = [];
+    document.querySelectorAll("#rows-images .row").forEach(function (row) {
+      var src = row.querySelector(".i-path").value.trim();
+      var alt = row.querySelector(".i-alt").value.trim();
+      var caption = row.querySelector(".i-caption").value.trim();
+      if (!src && !alt && !caption && !row._file) return;
+      if (!src) { errors.push("An image has no path."); return; }
+      if (!alt) errors.push("Image " + src + " needs alt text.");
+      var entry = { src: src, alt: alt };
+      if (caption) entry.caption = caption;
+      images.push(entry);
+      if (row._file) writes.push({ path: src, file: row._file });
+    });
+
+    var files = [];
+    document.querySelectorAll("#rows-files .row").forEach(function (row) {
+      var label = row.querySelector(".f-label").value.trim();
+      var path = row.querySelector(".f-path").value.trim();
+      if (!label && !path && !row._file) return;
+      if (!path) { errors.push("A file link has no path."); return; }
+      if (!label) { errors.push("The file " + path + " needs link text."); return; }
+      var fileEntry = { label: label, path: path };
+      var origin = row.querySelector(".f-source").value;
+      var reference = row.querySelector(".f-ref").value.trim();
+      if (origin) fileEntry.source = origin;
+      if (reference) fileEntry.reference = reference;
+      files.push(fileEntry);
+      if (row._file) writes.push({ path: path, file: row._file });
+    });
+
+    var inquiry = null;
+    if ($("f-inq-on").checked) {
+      var price = $("f-inq-price").value.trim();
+      var email = $("f-inq-email").value.trim();
+      if (!price) errors.push("Enter a price, or turn off \"Available for purchase\".");
+      if (!/^\S+@\S+\.\S+$/.test(email)) errors.push("Enter the email address inquiries should go to.");
+      inquiry = { price: price, email: email };
+    }
+
+    var values = {
+      id: id,
+      department: department,
+      title: title,
+      description: $("f-description").value.trim(),
+      condition: $("f-condition").value.trim(),
+      status: $("f-status").value.trim(),
+      details: details,
+      images: images,
+      files: files,
+      added: added,
+      hidden: $("f-hidden").value.trim()
+    };
+    if ($("f-draft").checked) values.draft = true;
+    if (collection) values.collection = collection;
+    if (inquiry) values.inquiry = inquiry;
+
+    var item = {};
+    ITEM_KEYS.forEach(function (k) { if (Object.prototype.hasOwnProperty.call(values, k)) item[k] = values[k]; });
+    if (original) {
+      Object.keys(original).forEach(function (k) { if (ITEM_KEYS.indexOf(k) === -1) item[k] = original[k]; });
+    }
+    return { item: item, errors: errors, writes: writes, original: original };
+  }
+
+  function updatePreview() {
+    var pre = $("preview-json");
+    if (pre && $("preview").open) pre.textContent = JSON.stringify(collectItem().item, null, 2);
+  }
+
+  async function saveItem(ev) {
+    ev.preventDefault();
+    var result = collectItem();
+    showErrors(result.errors);
+    if (result.errors.length) return;
+    try {
+      for (var i = 0; i < result.writes.length; i++) {
+        await writeToPath(result.writes[i].path, result.writes[i].file);
+      }
+      var idx = result.original ? state.data.items.indexOf(result.original) : -1;
+      if (idx >= 0) state.data.items[idx] = result.item; else state.data.items.push(result.item);
+      state.data.items.sort(function (a, b) { return natural(a.id, b.id); });
+      await persist("items");
+      state.sel.items = result.item.id;
+      state.formDirty = false;
+      renderAll();
+      setStatus("Saved " + result.item.id + savedNote("items.json"), "ok");
+    } catch (e) {
+      setStatus("Could not save: " + e.message, "error");
+    }
+  }
+
+  async function deleteItem() {
+    var key = state.sel.items;
+    if (key === null) return;
+    if (!window.confirm("Delete " + key + " from the catalog? Its image and download files are left where they are.")) return;
+    state.data.items = state.data.items.filter(function (i) { return i.id !== key; });
+    try {
+      await persist("items");
+      state.sel.items = null;
+      state.formDirty = false;
+      renderAll();
+      setStatus("Deleted " + key + ".", "ok");
+    } catch (e) {
+      setStatus("Could not save: " + e.message, "error");
+    }
+  }
+
+  function renderItemForm() {
+    var area = $("form-area");
+    var existing = state.sel.items !== null ? state.data.items.filter(function (i) { return i.id === state.sel.items; })[0] : null;
+    var rec = existing || takePrefill() || {
+      id: nextItemId(),
+      department: (state.data.departments[0] || {}).slug || "",
+      status: "catalogued",
+      added: todayISO(),
+      details: [], images: [], files: []
+    };
+
+    var form = el("form", { id: "item-form", novalidate: "novalidate" });
+    form.appendChild(el("h2", { "class": "form-title", text: existing ? "Edit " + existing.id : "New item" }));
+    form.appendChild(el("div", { id: "errors", role: "alert", hidden: "hidden" }));
+
+    form.appendChild(el("div", { "class": "two" }, [
+      field("Inventory number", textInput("f-id", rec.id)),
+      field("Catalogued on", (function () { var i = el("input", { type: "date", id: "f-added" }); i.value = rec.added || ""; return i; })())
+    ]));
+    form.appendChild(field("Title", textInput("f-title", rec.title)));
+
+    var deptOptions = state.data.departments.map(function (d) { return { value: d.slug, label: d.name }; });
+    var collOptions = [{ value: "", label: "(none)" }].concat(state.data.collections.map(function (c) {
+      return { value: c.slug, label: c.name + (c.department ? " (" + departmentName(c.department) + ")" : "") };
+    }));
+    form.appendChild(el("div", { "class": "two" }, [
+      field("Department", select("f-department", deptOptions, rec.department)),
+      field("Collection", select("f-collection", collOptions, rec.collection || ""), "Optional. A more specific group within the catalog. Add collections on the Collections tab.")
+    ]));
+
+    var statusInput = textInput("f-status", rec.status);
+    statusInput.setAttribute("list", "status-options");
+    var statusField = field("Status", statusInput, "Shown on the item and in lists unless it is \"catalogued\". Try returned, missing or not found.");
+    statusField.appendChild(el("datalist", { id: "status-options" }, ["catalogued", "returned", "missing", "not found"].map(function (v) { return el("option", { value: v }); })));
+    form.appendChild(statusField);
+
+    form.appendChild(withPicker(field("Description", textArea("f-description", rec.description, 6), "Leave a blank line between paragraphs. **bold**, *italic*, - lists and links work; use Insert a link below.")));
+    form.appendChild(field("Condition or acquisition note", textArea("f-condition", rec.condition, 2)));
+
+    form.appendChild(group("Details", "rows-details", rec.details || [], "Add a detail", detailRow, "Optional facts shown with the item, such as Medium or Dimensions."));
+    form.appendChild(group("Images", "rows-images", rec.images || [], "Add an image", imageRow,
+      canWrite() ? "Choose a file to copy it into the site's images folder. Every image needs alt text." : "Copy images into the site's images folder yourself, then type the path. Every image needs alt text."));
+    form.appendChild(group("Downloads", "rows-files", rec.files || [], "Add a download", fileRow,
+      (canWrite() ? "Choose a file to copy it into the site's files folder. " : "Copy files into the site's files folder yourself, then type the path. ") +
+      "For a reconstruction, also set the item's status to \"not found\"."));
+
+    var inq = rec.inquiry || null;
+    var inqBox = el("input", { type: "checkbox", id: "f-inq-on" });
+    inqBox.checked = !!inq;
+    var inqFields = el("div", { id: "inq-fields", "class": "two" }, [
+      field("Price", textInput("f-inq-price", inq && inq.price), "Shown as written, for example $40."),
+      field("Inquiries go to", textInput("f-inq-email", (inq && inq.email) || DEFAULT_EMAIL), "The item page gets an \"Inquire about purchase\" email link.")
+    ]);
+    inqFields.hidden = !inq;
+    inqBox.addEventListener("change", function () {
+      inqFields.hidden = !inqBox.checked;
+      if (inqBox.checked && !$("f-inq-email").value.trim()) $("f-inq-email").value = DEFAULT_EMAIL;
+    });
+    var inqGroup = el("fieldset", { "class": "group" }, [
+      el("legend", { text: "Purchase" }),
+      el("label", {}, [inqBox, " Available for purchase"]),
+      el("div", { "class": "hint", text: "The price and the inquiry link are saved together. Set the status to \"sold\" or \"acquired\" later to hide both on the site." }),
+      inqFields
+    ]);
+    form.appendChild(inqGroup);
+
+    form.appendChild(draftField(rec));
+    form.appendChild(field("Hidden note", textArea("f-hidden", rec.hidden, 2), "Optional. Appears only in the page's HTML source, as a comment."));
+
+    var save = el("button", { type: "submit", "class": "primary", text: "Save item" });
+    var actions = el("div", { "class": "actions" }, [save]);
+    if (existing) {
+      actions.appendChild(duplicateButton("items", function (c) { c.id = nextItemId(); c.title = (c.title || "") + " (copy)"; c.draft = true; c.added = todayISO(); return c; }));
+      var del = el("button", { type: "button", "class": "danger", text: "Delete item" });
+      del.addEventListener("click", deleteItem);
+      actions.appendChild(del);
+    }
+    form.appendChild(actions);
+
+    var preview = el("details", { "class": "preview", id: "preview" }, [el("summary", { text: "Show the JSON this form will write" }), el("pre", { id: "preview-json" })]);
+    preview.addEventListener("toggle", updatePreview);
+    form.appendChild(preview);
+
+    form.addEventListener("input", function () { state.formDirty = true; updatePreview(); });
+    form.addEventListener("submit", saveItem);
+    area.textContent = "";
+    area.appendChild(form);
+  }
+
+  // ---------- collection and department forms ----------
+
+  function renderSimpleForm(kind) {
+    var isColl = kind === "collections";
+    var area = $("form-area");
+    var existing = state.sel[kind] !== null ? state.data[kind].filter(function (r) { return r.slug === state.sel[kind]; })[0] : null;
+    var rec = existing || { slug: "", name: "", description: "", department: "" };
+    var noun = isColl ? "collection" : "department";
+
+    var form = el("form", { id: "simple-form", novalidate: "novalidate" });
+    form.appendChild(el("h2", { "class": "form-title", text: existing ? "Edit " + existing.name : "New " + noun }));
+    form.appendChild(el("div", { id: "errors", role: "alert", hidden: "hidden" }));
+
+    var nameInput = textInput("s-name", rec.name);
+    var slugInput = textInput("s-slug", rec.slug);
+    form.appendChild(field("Name", nameInput));
+    form.appendChild(field("Short name for the web address (slug)", slugInput, "Lowercase letters, numbers and hyphens. Changing it later updates every item that uses it."));
+    if (isColl) {
+      var opts = [{ value: "", label: "(none: spans several departments)" }].concat(state.data.departments.map(function (d) { return { value: d.slug, label: d.name }; }));
+      form.appendChild(field("Department", select("s-department", opts, rec.department || ""), "Optional. Leave empty for a collection that runs through several departments; each department page lists the collections its items belong to."));
+    }
+    form.appendChild(isColl ? withPicker(field("Description", textArea("s-description", rec.description, 4), "Leave a blank line between paragraphs.")) : field("Description", textArea("s-description", rec.description, 4), "Leave a blank line between paragraphs."));
+
+    nameInput.addEventListener("input", function () {
+      if (!state.slugTouched) slugInput.value = slugify(nameInput.value);
+    });
+    slugInput.addEventListener("input", function () { state.slugTouched = true; });
+
+    var actions = el("div", { "class": "actions" }, [el("button", { type: "submit", "class": "primary", text: "Save " + noun })]);
+    if (existing) {
+      var del = el("button", { type: "button", "class": "danger", text: "Delete " + noun });
+      del.addEventListener("click", function () { deleteSimple(kind); });
+      actions.appendChild(del);
+    }
+    form.appendChild(actions);
+
+    form.addEventListener("input", function () { state.formDirty = true; });
+    form.addEventListener("submit", function (ev) { ev.preventDefault(); saveSimple(kind); });
+    area.textContent = "";
+    area.appendChild(form);
+  }
+
+  async function saveSimple(kind) {
+    var isColl = kind === "collections";
+    var name = $("s-name").value.trim();
+    var slug = $("s-slug").value.trim();
+    var description = $("s-description").value.trim();
+    var department = isColl ? $("s-department").value : null;
+    var original = state.sel[kind] !== null ? state.data[kind].filter(function (r) { return r.slug === state.sel[kind]; })[0] : null;
+    var errors = [];
+    if (!name) errors.push("Give it a name.");
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) errors.push("The slug must be lowercase letters, numbers and single hyphens, for example works-on-paper.");
+    else if (state.data[kind].some(function (r) { return r.slug === slug && r !== original; })) errors.push("Another one already uses the slug " + slug + ".");
+    showErrors(errors);
+    if (errors.length) return;
+
+    var record = { slug: slug, name: name };
+    if (isColl && department) record.department = department;
+    record.description = description;
+    if (original) Object.keys(original).forEach(function (k) { if (!(k in record)) record[k] = original[k]; });
+
+    try {
+      var oldSlug = original ? original.slug : null;
+      var idx = original ? state.data[kind].indexOf(original) : -1;
+      if (idx >= 0) state.data[kind][idx] = record; else state.data[kind].push(record);
+
+      if (oldSlug && oldSlug !== slug) {
+        var itemField = isColl ? "collection" : "department";
+        state.data.items.forEach(function (i) { if (i[itemField] === oldSlug) i[itemField] = slug; });
+        await persist("items");
+        if (!isColl) {
+          state.data.collections.forEach(function (c) { if (c.department === oldSlug) c.department = slug; });
+          await persist("collections");
+        }
+      }
+      await persist(kind);
+      state.sel[kind] = slug;
+      state.formDirty = false;
+      renderAll();
+      setStatus("Saved " + name + (state.mode === "files" ? ". Download the changed files when you are done." : state.mode === "gh" ? savedNote("") : "."), "ok");
+    } catch (e) {
+      setStatus("Could not save: " + e.message, "error");
+    }
+  }
+
+  async function deleteSimple(kind) {
+    var isColl = kind === "collections";
+    var slug = state.sel[kind];
+    if (slug === null) return;
+    var itemField = isColl ? "collection" : "department";
+    var users = state.data.items.filter(function (i) { return i[itemField] === slug; });
+
+    if (!isColl) {
+      var collUsers = state.data.collections.filter(function (c) { return c.department === slug; });
+      if (users.length || collUsers.length) {
+        showErrors(["This department still has " + users.length + " item(s) and " + collUsers.length + " collection(s). Move or delete them first."]);
+        return;
+      }
+    }
+    var message = "Delete " + slug + "?";
+    if (isColl && users.length) message += " " + users.length + " item(s) will be left without a collection.";
+    if (!window.confirm(message)) return;
+
+    try {
+      if (isColl && users.length) {
+        users.forEach(function (i) { delete i.collection; });
+        await persist("items");
+      }
+      state.data[kind] = state.data[kind].filter(function (r) { return r.slug !== slug; });
+      await persist(kind);
+      state.sel[kind] = null;
+      state.formDirty = false;
+      renderAll();
+      setStatus("Deleted " + slug + ".", "ok");
+    } catch (e) {
+      setStatus("Could not save: " + e.message, "error");
+    }
+  }
+
+  // ---------- site pages and intranet pages ----------
+
+  var MARKUP_HINT = "Blank line between paragraphs. ## Heading. - bullet (one per line). | a | b | rows make a table; a line like |---|---| after the first row makes it the header. **bold**, *italic*, [text](address). Shortcuts: page:slug, item:AD-0001, dept:slug, collection:slug, intranet:slug.";
+  var PAGE_TYPES = [
+    { value: "standard", label: "Standard page" },
+    { value: "notes", label: "Cataloguer's notes (dated log)" },
+    { value: "finding-aid", label: "Finding aid (curated item list)" },
+    { value: "front", label: "Front page (only one)" }
+  ];
+  var PAGE_KEYS = ["slug", "type", "title", "menu", "order", "listed", "lede", "recentCount", "body", "entries", "items", "revised", "draft", "hidden"];
+  var INTRANET_TYPES = [
+    { value: "notice", label: "Notice (memo to staff)" },
+    { value: "form", label: "Form" },
+    { value: "policy", label: "Policy or procedure" },
+    { value: "reference", label: "Reference (tables, lists)" },
+    { value: "minutes", label: "Minutes or log" }
+  ];
+  var INTRANET_KEYS = ["slug", "type", "title", "number", "owner", "issued", "originally", "revision", "status", "access", "restrictedTo", "to", "from", "submitTo", "fields", "effective", "supersedes", "meetingDate", "attendees", "seeAlso", "body", "draft", "hidden"];
+  var INTRANET_TYPE_KEYS = {
+    notice: ["to", "from"],
+    form: ["number", "submitTo", "fields"],
+    policy: ["number", "effective", "supersedes"],
+    reference: [],
+    minutes: ["meetingDate", "attendees"]
+  };
+  var LAST_INTRANET_DATE = "1995-12-31";
+
+  function labelOf(list, value) {
+    var f = list.filter(function (o) { return o.value === value; })[0];
+    return f ? f.label : value;
+  }
+  // Reads a field that may not exist yet (the type-specific fields are swapped when the type changes).
+  function val(id) { var e = $(id); return e ? e.value.trim() : ""; }
+  function isoOK(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s); }
+  function fmt95(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+    return m ? m[2] + "/" + m[3] + "/" + m[1].slice(2) : (iso || "");
+  }
+  function dateInput(id, value) {
+    var i = el("input", { type: "date", id: id });
+    i.value = value || "";
+    return i;
+  }
+  function checkField(id, label, checked, hint) {
+    var box = el("input", { type: "checkbox", id: id });
+    box.checked = !!checked;
+    var wrap = el("div", { "class": "field" }, [el("label", {}, [box, " " + label])]);
+    if (hint) wrap.appendChild(el("div", { "class": "hint", text: hint }));
+    return wrap;
+  }
+  function miniArea(label, cls, value, rows) {
+    var t = el("textarea", { "class": cls, rows: String(rows || 2) });
+    t.value = value || "";
+    return el("label", { "class": "mini" }, [el("span", { text: label }), t]);
+  }
+  function lines(text) {
+    return String(text || "").split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+  function pick(obj, keys) {
+    var out = {};
+    keys.forEach(function (k) { if (Object.prototype.hasOwnProperty.call(obj, k)) out[k] = obj[k]; });
+    return out;
+  }
+  function currentRecord(kind) {
+    var key = state.sel[kind];
+    return key !== null ? state.data[kind].filter(function (r) { return r.slug === key; })[0] : null;
+  }
+  function wireSlug(titleInput, slugInput, locked) {
+    titleInput.addEventListener("input", function () {
+      if (!state.slugTouched && !locked) slugInput.value = slugify(titleInput.value);
+    });
+    slugInput.addEventListener("input", function () { state.slugTouched = true; });
+  }
+  function recordButtons(noun, existing, onDelete, extra) {
+    var actions = el("div", { "class": "actions" }, [el("button", { type: "submit", "class": "primary", text: "Save " + noun })]);
+    if (extra) actions.appendChild(extra);
+    if (existing) {
+      var del = el("button", { type: "button", "class": "danger", text: "Delete " + noun });
+      del.addEventListener("click", onDelete);
+      actions.appendChild(del);
+    }
+    return actions;
+  }
+
+  // ----- site pages -----
+
+  function pageTypeFields(type, rec) {
+    var box = el("div", { id: "p-typefields" });
+    if (type === "front") {
+      box.appendChild(field("Opening line", textInput("p-lede", rec.lede), "Shown large above the story."));
+      box.appendChild(withPicker(field("Story", textArea("p-body", rec.body, 12), MARKUP_HINT)));
+      box.appendChild(field("Recent items to show", textInput("p-recent", rec.recentCount != null ? String(rec.recentCount) : "5")));
+    } else if (type === "notes") {
+      box.appendChild(withPicker(field("Introduction (optional)", textArea("p-body", rec.body, 3), MARKUP_HINT)));
+      var rowMaker = function (e) {
+        var row = el("div", { "class": "row entry" });
+        row.appendChild(el("div", { "class": "two" }, [
+          (function () { var l = el("label", { "class": "mini" }, [el("span", { text: "Date" }), dateInput("", e && e.date)]); l.querySelector("input").removeAttribute("id"); l.querySelector("input").className = "pe-date"; return l; })(),
+          mini("Title (optional)", "pe-title", e && e.title)
+        ]));
+        row.appendChild(miniArea("Entry", "pe-body", e && e.body, 4));
+        row.appendChild(linkPicker(row.querySelector(".pe-body")));
+        row.appendChild(removeButton(row));
+        return row;
+      };
+      box.appendChild(group("Entries", "rows-entries", (rec.entries || []).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }), "Add an entry", rowMaker, "Shown newest first, whatever order you add them in."));
+    } else if (type === "finding-aid") {
+      box.appendChild(withPicker(field("Introduction", textArea("p-body", rec.body, 4), MARKUP_HINT)));
+      var ids = el("datalist", { id: "item-ids" }, state.data.items.map(function (i) { return el("option", { value: i.id, label: i.title }); }));
+      box.appendChild(ids);
+      var itemRow = function (r) {
+        var row = el("div", { "class": "row detail" });
+        var idMini = mini("Item number", "fa-id", r && r.id);
+        idMini.querySelector("input").setAttribute("list", "item-ids");
+        row.appendChild(idMini);
+        row.appendChild(mini("Note shown under it (optional)", "fa-note", r && r.note));
+        row.appendChild(removeButton(row));
+        return row;
+      };
+      box.appendChild(group("Items", "rows-fa", rec.items || [], "Add an item", itemRow, "Shown in this order."));
+    } else {
+      box.appendChild(withPicker(field("Text", textArea("p-body", rec.body, 14), MARKUP_HINT)));
+    }
+    return box;
+  }
+
+  function collectPage() {
+    var errors = [];
+    var original = currentRecord("pages");
+    var type = $("p-type").value;
+    var title = $("p-title").value.trim();
+    var slug = $("p-slug").value.trim();
+    var menu = $("p-menu").value;
+    var orderText = $("p-order").value.trim();
+    var revised = $("p-revised").value.trim();
+
+    if (!title) errors.push("Give the page a title.");
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) errors.push("The slug must be lowercase letters, numbers and single hyphens, for example legal-notices.");
+    else if (state.data.pages.some(function (p) { return p.slug === slug && p !== original; })) errors.push("Another page already uses the slug " + slug + ".");
+    if (type === "front") {
+      if (slug !== "home") errors.push("The front page's slug must be home.");
+      if (state.data.pages.some(function (p) { return p.type === "front" && p !== original; })) errors.push("There is already a front page. Edit that one.");
+    } else if (slug === "home") errors.push("The slug home is reserved for the front page.");
+    if (orderText && !/^-?\d+$/.test(orderText)) errors.push("Menu order must be a whole number.");
+    if (revised && !isoOK(revised)) errors.push("The revised date must look like 2026-10-21.");
+
+    var v = { slug: slug, type: type, title: title, menu: type === "front" ? "none" : menu, order: orderText ? parseInt(orderText, 10) : 0, listed: $("p-listed").checked, revised: revised, hidden: $("p-hidden").value.trim() };
+    if ($("f-draft").checked) v.draft = true;
+    if (type === "front") {
+      v.lede = val("p-lede");
+      v.body = val("p-body");
+      var rc = val("p-recent");
+      if (rc && !/^\d+$/.test(rc)) errors.push("Recent items must be a whole number.");
+      v.recentCount = rc ? Math.max(1, parseInt(rc, 10)) : 5;
+      v.listed = false;
+    } else if (type === "notes") {
+      v.body = val("p-body");
+      v.entries = [];
+      document.querySelectorAll("#rows-entries .row").forEach(function (row) {
+        var date = row.querySelector(".pe-date").value.trim();
+        var t = row.querySelector(".pe-title").value.trim();
+        var b = row.querySelector(".pe-body").value.trim();
+        if (!date && !t && !b) return;
+        if (!isoOK(date)) { errors.push("Every entry needs a date."); return; }
+        if (!t && !b) { errors.push("The entry dated " + date + " is empty."); return; }
+        v.entries.push({ date: date, title: t, body: b });
+      });
+    } else if (type === "finding-aid") {
+      v.body = val("p-body");
+      v.items = [];
+      document.querySelectorAll("#rows-fa .row").forEach(function (row) {
+        var id = row.querySelector(".fa-id").value.trim();
+        var note = row.querySelector(".fa-note").value.trim();
+        if (!id && !note) return;
+        if (!id) { errors.push("A note has no item number."); return; }
+        if (!state.data.items.some(function (i) { return i.id === id; })) errors.push(id + " is not in the catalog.");
+        var entry = { id: id };
+        if (note) entry.note = note;
+        v.items.push(entry);
+      });
+    } else {
+      v.body = val("p-body");
+    }
+    var page = {};
+    PAGE_KEYS.forEach(function (k) { if (Object.prototype.hasOwnProperty.call(v, k)) page[k] = v[k]; });
+    if (original) Object.keys(original).forEach(function (k) { if (PAGE_KEYS.indexOf(k) === -1) page[k] = original[k]; });
+    return { page: page, errors: errors, original: original };
+  }
+
+  function renderPageForm() {
+    var area = $("form-area");
+    var existing = currentRecord("pages");
+    var rec = existing || takePrefill() || { type: "standard", menu: "none", order: 0, listed: true, body: "", revised: "" };
+    var form = el("form", { id: "page-form", novalidate: "novalidate" });
+    form.appendChild(el("h2", { "class": "form-title", text: existing ? "Edit " + existing.title : "New site page" }));
+    form.appendChild(el("div", { id: "errors", role: "alert", hidden: "hidden" }));
+
+    var typeSel = select("p-type", PAGE_TYPES, rec.type);
+    form.appendChild(field("Page type", typeSel, "Standard pages hold a title and text (About, legal notices). Cataloguer's notes is a dated log, newest first. A finding aid is a curated list of catalog items. The front page is the home page; there is only one."));
+    var titleInput = textInput("p-title", rec.title);
+    var slugInput = textInput("p-slug", rec.slug);
+    form.appendChild(field("Title", titleInput));
+    form.appendChild(field("Short name for the web address (slug)", slugInput, "The page lives at /page/?id=slug. The page with slug about is also reached at /about/. Changing a slug breaks links to it."));
+    wireSlug(titleInput, slugInput, rec.type === "front");
+
+    var menuField = el("div", { "class": "two" }, [
+      field("Where it appears in the side menu", select("p-menu", [{ value: "none", label: "Nowhere (reached by links only)" }, { value: "about", label: "Bottom of the menu, with About" }, { value: "main", label: "Main menu, after Collections" }], rec.menu || "none")),
+      field("Order in that menu", textInput("p-order", String(rec.order != null ? rec.order : 0)), "Lower numbers come first.")
+    ]);
+    form.appendChild(menuField);
+    form.appendChild(checkField("p-listed", "Listed in the side menu", rec.listed !== false, "Untick to keep the page out of the menu even if a place is chosen above. It is still reachable by its address."));
+
+    var typeBox = pageTypeFields(rec.type, rec);
+    form.appendChild(typeBox);
+    form.appendChild(field("Last revised (optional)", dateInput("p-revised", rec.revised), "Shown quietly at the bottom of the page."));
+    form.appendChild(draftField(rec));
+    form.appendChild(field("Hidden note", textArea("p-hidden", rec.hidden, 2), "Optional. Appears only in the page's HTML source, as a comment."));
+    form.appendChild(recordButtons("page", existing, deletePage, existing && rec.type !== "front" ? duplicateButton("pages", function (c) { c.slug = ""; c.title = (c.title || "") + " (copy)"; c.draft = true; return c; }) : null));
+
+    var prev = el("details", { "class": "preview", id: "preview", open: "open" }, [el("summary", { text: "Preview" }), el("div", { id: "pv", "class": "pv-site" })]);
+    form.appendChild(prev);
+
+    typeSel.addEventListener("change", function () {
+      var fresh = Object.assign({}, rec, { type: typeSel.value });
+      var next = pageTypeFields(typeSel.value, fresh);
+      typeBox.replaceWith(next);
+      typeBox = next;
+      if (typeSel.value === "front") $("p-slug").value = "home";
+      updatePagePreview();
+    });
+    form.addEventListener("input", function () { state.formDirty = true; updatePagePreview(); });
+    form.addEventListener("submit", savePage);
+    area.textContent = "";
+    area.appendChild(form);
+    updatePagePreview();
+  }
+
+  function updatePagePreview() {
+    var pv = $("pv");
+    if (!pv) return;
+    var p = collectPage().page;
+    pv.textContent = "";
+    pv.appendChild(el("h1", { text: p.title || "(untitled)" }));
+    if (p.type === "front" && p.lede) pv.appendChild(el("p", { "class": "lede", text: p.lede }));
+    if (p.body) pv.appendChild(window.ADMarkup.render(p.body, { root: "./" }));
+    if (p.type === "notes") {
+      (p.entries || []).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).forEach(function (e) {
+        pv.appendChild(el("h2", { text: e.date + (e.title ? "  " + e.title : "") }));
+        pv.appendChild(window.ADMarkup.render(e.body, { root: "./" }));
+      });
+    }
+    if (p.type === "finding-aid") {
+      var ul = el("ul", { "class": "entries" });
+      (p.items || []).forEach(function (r) {
+        var it = state.data.items.filter(function (i) { return i.id === r.id; })[0];
+        var li = el("li", {}, [el("a", { href: "#", text: r.id + "  " + (it ? it.title : "(not in catalog)") })]);
+        if (r.note) li.appendChild(el("span", { "class": "meta", text: r.note }));
+        ul.appendChild(li);
+      });
+      pv.appendChild(ul);
+    }
+    if (p.type === "front") pv.appendChild(el("h2", { text: "Recent additions" }));
+    if (p.revised) pv.appendChild(el("p", { "class": "revised", text: "Last revised " + p.revised + "." }));
+    pv.querySelectorAll("a").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); }); });
+  }
+
+  async function savePage(ev) {
+    ev.preventDefault();
+    var r = collectPage();
+    showErrors(r.errors);
+    if (r.errors.length) return;
+    try {
+      var idx = r.original ? state.data.pages.indexOf(r.original) : -1;
+      if (idx >= 0) state.data.pages[idx] = r.page; else state.data.pages.push(r.page);
+      await persist("pages");
+      state.sel.pages = r.page.slug;
+      state.formDirty = false;
+      renderAll();
+      setStatus("Saved " + r.page.title + savedNote("pages.json"), "ok");
+    } catch (e) {
+      setStatus("Could not save: " + e.message, "error");
+    }
+  }
+
+  async function deletePage() {
+    var slug = state.sel.pages;
+    if (slug === null) return;
+    var msg = "Delete the page " + slug + "?";
+    if (slug === "home") msg += " The front page will show nothing until you create it again.";
+    if (slug === "about") msg += " The About link will then lead to a page that is not on file.";
+    if (!window.confirm(msg)) return;
+    state.data.pages = state.data.pages.filter(function (p) { return p.slug !== slug; });
+    try {
+      await persist("pages");
+      state.sel.pages = null;
+      state.formDirty = false;
+      renderAll();
+      setStatus("Deleted " + slug + ".", "ok");
+    } catch (e) {
+      setStatus("Could not save: " + e.message, "error");
+    }
+  }
+
+  // ----- intranet pages -----
+
+  function intranetTypeFields(type, rec) {
+    var box = el("div", { id: "n-typefields" });
+    if (type === "notice") {
+      box.appendChild(el("div", { "class": "two" }, [
+        field("To", textInput("n-to", rec.to != null ? rec.to : "All Staff")),
+        field("From", textInput("n-from", rec.from), "Defaults to the owner. Use a department or title, never a name.")
+      ]));
+      box.appendChild(el("div", { "class": "hint", text: "The page title is the memo's Re: line." }));
+    } else if (type === "form") {
+      box.appendChild(el("div", { "class": "two" }, [
+        field("Form number", textInput("n-number", rec.number), "Usually a whole number. The Forms Index lists every number up to the highest, and shows a gap as \"Not on file\" where no listed form has that number."),
+        field("Return to", textInput("n-submitTo", rec.submitTo), "For example Commissions, Ext. 230.")
+      ]));
+      var rowMaker = function (f) {
+        var row = el("div", { "class": "row detail" });
+        row.appendChild(mini("Field label", "if-label", f && f.label));
+        row.appendChild(mini("Pre-printed text in the blank (optional)", "if-instr", f && f.instruction));
+        row.appendChild(removeButton(row));
+        return row;
+      };
+      box.appendChild(group("Fields", "rows-ifields", rec.fields || [], "Add a field", rowMaker, "Each becomes a labelled blank on the form. Put the form's instructions in the text below."));
+    } else if (type === "policy") {
+      box.appendChild(el("div", { "class": "two" }, [
+        field("Policy number (optional)", textInput("n-number", rec.number), "For example P-4."),
+        field("Effective", dateInput("n-effective", rec.effective))
+      ]));
+      box.appendChild(field("Supersedes (optional)", textInput("n-supersedes", rec.supersedes), "For example P-2, 03/01/90."));
+      box.appendChild(el("div", { "class": "hint", text: "Headings (## ...) in the text are numbered automatically: 1. 2. 3." }));
+    } else if (type === "minutes") {
+      box.appendChild(field("Meeting date", dateInput("n-meeting", rec.meetingDate)));
+      box.appendChild(field("Present", textArea("n-attendees", (rec.attendees || []).join("\n"), 3), "One per line. Titles only, never names, for example Director of Facilities."));
+    } else {
+      box.appendChild(el("div", { "class": "hint", text: "Reference pages are mostly tables: extension lists, schedules, charts of offices by title." }));
+    }
+    return box;
+  }
+
+  function collectIntranet() {
+    var errors = [];
+    var original = currentRecord("intranet");
+    var type = $("n-type").value;
+    var title = $("n-title").value.trim();
+    var slug = $("n-slug").value.trim();
+    var issued = $("n-issued").value.trim();
+    var originally = $("n-originally").value.trim();
+    var revText = $("n-revision").value.trim();
+    var access = $("n-access").value;
+
+    function dateCheck(label, value, required) {
+      if (!value) { if (required) errors.push(label + " is required."); return; }
+      if (!isoOK(value)) errors.push(label + " must be a date.");
+      else if (value > LAST_INTRANET_DATE) errors.push(label + " must be in 1995 or earlier. The archive was cut off in 1995.");
+    }
+
+    if (!title) errors.push("Give the page a title.");
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) errors.push("The slug must be lowercase letters, numbers and single hyphens, for example form-12.");
+    else if (state.data.intranet.some(function (p) { return p.slug === slug && p !== original; })) errors.push("Another intranet page already uses the slug " + slug + ".");
+    dateCheck("The date", issued, true);
+    dateCheck("The originally-issued date", originally, false);
+    if (originally && issued && originally > issued) errors.push("The originally-issued date cannot be after the date.");
+    if (!/^\d+$/.test(revText) || parseInt(revText, 10) < 1) errors.push("Revision must be a whole number, 1 or more.");
+
+    var v = {
+      slug: slug, type: type, title: title,
+      owner: $("n-owner").value.trim(),
+      issued: issued,
+      revision: /^\d+$/.test(revText) ? parseInt(revText, 10) : 1,
+      status: $("n-status").value,
+      access: access,
+      seeAlso: lines($("n-seealso").value),
+      body: $("n-body").value.trim(),
+      hidden: $("n-hidden").value.trim()
+    };
+    if ($("f-draft").checked) v.draft = true;
+    if (originally) v.originally = originally;
+    if (access === "restricted") v.restrictedTo = $("n-restrictedTo").value.trim();
+
+    if (type === "notice") {
+      v.to = val("n-to");
+      v.from = val("n-from");
+    } else if (type === "form") {
+      v.number = val("n-number");
+      v.submitTo = val("n-submitTo");
+      if (!v.number) errors.push("Give the form a number.");
+      v.fields = [];
+      document.querySelectorAll("#rows-ifields .row").forEach(function (row) {
+        var label = row.querySelector(".if-label").value.trim();
+        var instr = row.querySelector(".if-instr").value.trim();
+        if (!label && !instr) return;
+        if (!label) { errors.push("A form field has pre-printed text but no label."); return; }
+        v.fields.push({ label: label, instruction: instr });
+      });
+    } else if (type === "policy") {
+      v.number = val("n-number");
+      v.effective = val("n-effective");
+      v.supersedes = val("n-supersedes");
+      dateCheck("The effective date", v.effective, false);
+    } else if (type === "minutes") {
+      v.meetingDate = val("n-meeting");
+      dateCheck("The meeting date", v.meetingDate, false);
+      v.attendees = lines(val("n-attendees"));
+    }
+
+    var page = {};
+    var allowed = INTRANET_KEYS.filter(function (k) {
+      var typeSpecific = Object.keys(INTRANET_TYPE_KEYS).some(function (t) { return INTRANET_TYPE_KEYS[t].indexOf(k) !== -1; });
+      return !typeSpecific || INTRANET_TYPE_KEYS[type].indexOf(k) !== -1;
+    });
+    allowed.forEach(function (k) { if (Object.prototype.hasOwnProperty.call(v, k)) page[k] = v[k]; });
+    if (original) Object.keys(original).forEach(function (k) { if (INTRANET_KEYS.indexOf(k) === -1) page[k] = original[k]; });
+    return { page: page, errors: errors, original: original };
+  }
+
+  function renderIntranetForm() {
+    var area = $("form-area");
+    var existing = currentRecord("intranet");
+    var rec = existing || takePrefill() || { type: "notice", issued: "1995-06-01", revision: 1, status: "current", access: "all", seeAlso: [], body: "" };
+    var form = el("form", { id: "intranet-form", novalidate: "novalidate" });
+    form.appendChild(el("h2", { "class": "form-title", text: existing ? "Edit " + existing.title : "New intranet page" }));
+    form.appendChild(el("div", { id: "errors", role: "alert", hidden: "hidden" }));
+
+    var typeSel = select("n-type", INTRANET_TYPES, rec.type);
+    form.appendChild(field("Page type", typeSel));
+    var titleInput = textInput("n-title", rec.title);
+    var slugInput = textInput("n-slug", rec.slug);
+    form.appendChild(field("Title", titleInput));
+    form.appendChild(field("Short name for the web address (slug)", slugInput, "Reached at /intranet/page/?id=slug."));
+    wireSlug(titleInput, slugInput, false);
+
+    form.appendChild(el("div", { "class": "two" }, [
+      field("Owner (department or title)", textInput("n-owner", rec.owner), "Plain text, never a person's name. For example Facilities."),
+      field("Revision", textInput("n-revision", String(rec.revision != null ? rec.revision : 1)))
+    ]));
+    form.appendChild(el("div", { "class": "two" }, [
+      field("Date", dateInput("n-issued", rec.issued), "Shown as MM/DD/YY. Must be in 1995 or earlier."),
+      field("Originally issued (optional)", dateInput("n-originally", rec.originally), "For a revised page that first appeared earlier. Shown in the footer.")
+    ]));
+    form.appendChild(el("div", { "class": "two" }, [
+      field("Status", select("n-status", [{ value: "current", label: "Current" }, { value: "superseded", label: "Superseded (marked, still listed)" }, { value: "withdrawn", label: "Withdrawn (marked, still listed)" }], rec.status || "current")),
+      field("Access", select("n-access", [{ value: "all", label: "All staff (listed)" }, { value: "restricted", label: "Restricted (listed, marked)" }, { value: "classified", label: "Classified (unlisted; found only by clues)" }], rec.access || "all"))
+    ]));
+    var restrictedField = field("Restricted to", textInput("n-restrictedTo", rec.restrictedTo), "Who may read it, by title. For example Directors and above.");
+    restrictedField.hidden = (rec.access || "all") !== "restricted";
+    form.appendChild(restrictedField);
+    $accessWatch(form, restrictedField);
+
+    var typeBox = intranetTypeFields(rec.type, rec);
+    form.appendChild(typeBox);
+
+    form.appendChild(withPicker(field("Text", textArea("n-body", rec.body, 12), MARKUP_HINT)));
+    form.appendChild(field("See also (optional)", textArea("n-seealso", (rec.seeAlso || []).join("\n"), 2), "Slugs of other intranet pages, one per line. This is how a classified page gets found: link to it from an ordinary one, or have it cited. A slug with no page shows as not on file."));
+    form.appendChild(draftField(rec));
+    form.appendChild(field("Hidden note", textArea("n-hidden", rec.hidden, 2), "Optional. Appears only in the page's HTML source, as a comment."));
+    form.appendChild(recordButtons("page", existing, deleteIntranet, existing ? duplicateButton("intranet", function (c) { c.slug = ""; c.title = (c.title || "") + " (copy)"; c.draft = true; if (c.number) c.number = ""; return c; }) : null));
+
+    var prev = el("details", { "class": "preview", id: "preview", open: "open" }, [el("summary", { text: "Preview (1995)" }), el("div", { id: "pv", "class": "pv95" })]);
+    form.appendChild(prev);
+
+    typeSel.addEventListener("change", function () {
+      var next = intranetTypeFields(typeSel.value, Object.assign({}, rec, { type: typeSel.value }));
+      typeBox.replaceWith(next);
+      typeBox = next;
+      updateIntranetPreview();
+    });
+    form.addEventListener("input", function () { state.formDirty = true; updateIntranetPreview(); });
+    form.addEventListener("submit", saveIntranet);
+    area.textContent = "";
+    area.appendChild(form);
+    updateIntranetPreview();
+  }
+
+  function $accessWatch(form, restrictedField) {
+    form.addEventListener("change", function (ev) {
+      if (ev.target && ev.target.id === "n-access") restrictedField.hidden = ev.target.value !== "restricted";
+    });
+  }
+
+  function updateIntranetPreview() {
+    var pv = $("pv");
+    if (!pv) return;
+    var p = collectIntranet().page;
+    pv.textContent = "";
+    var md = function (text, opts) { pv.appendChild(window.ADMarkup.render(text, opts || { root: "./" })); };
+    function alertBox(text, cls) { pv.appendChild(el("div", { "class": "alert " + cls, text: text })); }
+    function memoTable(rows) {
+      var t = el("table", { "class": "memo" });
+      rows.forEach(function (r) { t.appendChild(el("tr", {}, [el("th", { text: r[0] }), el("td", { text: r[1] })])); });
+      pv.appendChild(t);
+      pv.appendChild(el("hr"));
+    }
+    if (p.access === "classified") alertBox("CLASSIFIED. Do not copy or distribute.", "classified");
+    if (p.access === "restricted") alertBox("DISTRIBUTION RESTRICTED" + (p.restrictedTo ? " to " + p.restrictedTo : "") + ".", "restricted");
+    if (p.status === "superseded") alertBox("THIS DOCUMENT HAS BEEN SUPERSEDED. Do not use.", "status");
+    if (p.status === "withdrawn") alertBox("THIS DOCUMENT HAS BEEN WITHDRAWN.", "status");
+    var heading = p.title || "(untitled)";
+    if (p.type === "form") heading = "Form " + (p.number || "") + ": " + heading;
+    if (p.type === "policy" && p.number) heading = p.number + ": " + heading;
+    if (p.type === "notice") heading = "Notice: " + heading;
+    pv.appendChild(el("h1", { text: heading }));
+    if (p.type === "notice") { memoTable([["To:", p.to || "All Staff"], ["From:", p.from || p.owner || ""], ["Date:", fmt95(p.issued)], ["Re:", p.title || ""]]); md(p.body); }
+    else if (p.type === "form") {
+      md(p.body);
+      var ft = el("table", { "class": "form" });
+      (p.fields || []).forEach(function (f) { ft.appendChild(el("tr", {}, [el("th", { text: f.label }), el("td", { "class": "blank", text: f.instruction || "" })])); });
+      pv.appendChild(ft);
+      if (p.submitTo) pv.appendChild(el("p", {}, [el("b", { text: "Return to: " }), p.submitTo]));
+    } else if (p.type === "policy") {
+      var rows = [];
+      if (p.number) rows.push(["Number:", p.number]);
+      if (p.effective) rows.push(["Effective:", fmt95(p.effective)]);
+      if (p.supersedes) rows.push(["Supersedes:", p.supersedes]);
+      memoTable(rows);
+      md(p.body, { root: "./", numberHeadings: true });
+    } else if (p.type === "minutes") {
+      var mrows = [["Meeting:", fmt95(p.meetingDate || p.issued)]];
+      if (p.attendees && p.attendees.length) mrows.push(["Present:", p.attendees.join("; ")]);
+      memoTable(mrows);
+      md(p.body);
+    } else md(p.body);
+    if (p.seeAlso && p.seeAlso.length) {
+      pv.appendChild(el("h2", { text: "See also" }));
+      var ul = el("ul");
+      p.seeAlso.forEach(function (s) {
+        var other = state.data.intranet.filter(function (x) { return x.slug === s; })[0];
+        ul.appendChild(el("li", {}, [el("a", { href: "#", text: other ? other.title : s })]));
+      });
+      pv.appendChild(ul);
+    }
+    var bits = [];
+    if (p.owner) bits.push("Owner: " + p.owner);
+    bits.push("Revision " + (p.revision || 1));
+    bits.push("Last updated " + fmt95(p.issued));
+    if (p.originally) bits.push("Originally issued " + fmt95(p.originally));
+    pv.appendChild(el("div", { "class": "pv-foot", text: bits.join(". ") + "." }));
+    pv.querySelectorAll("a").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); }); });
+  }
+
+  async function saveIntranet(ev) {
+    ev.preventDefault();
+    var r = collectIntranet();
+    showErrors(r.errors);
+    if (r.errors.length) return;
+    try {
+      var oldSlug = r.original ? r.original.slug : null;
+      var idx = r.original ? state.data.intranet.indexOf(r.original) : -1;
+      if (idx >= 0) state.data.intranet[idx] = r.page; else state.data.intranet.push(r.page);
+      if (oldSlug && oldSlug !== r.page.slug) {
+        state.data.intranet.forEach(function (p) {
+          if (p.seeAlso) p.seeAlso = p.seeAlso.map(function (s) { return s === oldSlug ? r.page.slug : s; });
+        });
+      }
+      await persist("intranet");
+      state.sel.intranet = r.page.slug;
+      state.formDirty = false;
+      renderAll();
+      setStatus("Saved " + r.page.title + savedNote("intranet.json"), "ok");
+    } catch (e) {
+      setStatus("Could not save: " + e.message, "error");
+    }
+  }
+
+  async function deleteIntranet() {
+    var slug = state.sel.intranet;
+    if (slug === null) return;
+    if (!window.confirm("Delete the intranet page " + slug + "? Links and see-also entries that point to it will show as not on file.")) return;
+    state.data.intranet = state.data.intranet.filter(function (p) { return p.slug !== slug; });
+    try {
+      await persist("intranet");
+      state.sel.intranet = null;
+      state.formDirty = false;
+      renderAll();
+      setStatus("Deleted " + slug + ".", "ok");
+    } catch (e) {
+      setStatus("Could not save: " + e.message, "error");
+    }
+  }
+
+  // ---------- link picker ----------
+
+  // Everything a body can link to, as { group, value, label, text } rows.
+  function linkTargets() {
+    var D = state.data, rows = [];
+    function mark(r) { return r.draft ? " (draft)" : r.access === "classified" ? " (classified)" : ""; }
+    D.pages.filter(function (p) { return p.type !== "front"; }).sort(function (a, b) { return natural(a.title, b.title); }).forEach(function (p) {
+      rows.push({ group: "Site pages", value: "page:" + p.slug, label: p.title + mark(p), text: p.title });
+    });
+    D.items.slice().sort(function (a, b) { return natural(a.id, b.id); }).forEach(function (i) {
+      rows.push({ group: "Catalog items", value: "item:" + i.id, label: i.id + "  " + (i.title || "") + mark(i), text: i.title || i.id });
+    });
+    D.departments.forEach(function (d) { rows.push({ group: "Departments", value: "dept:" + d.slug, label: d.name, text: d.name }); });
+    D.collections.forEach(function (c) { rows.push({ group: "Collections", value: "collection:" + c.slug, label: c.name, text: c.name }); });
+    rows.push({ group: "Intranet pages", value: "intranet:home", label: "AD-Net home", text: "AD-Net" });
+    D.intranet.slice().sort(function (a, b) { return natural(a.title, b.title); }).forEach(function (p) {
+      rows.push({ group: "Intranet pages", value: "intranet:" + p.slug, label: p.title + mark(p), text: p.title });
+    });
+    return rows;
+  }
+
+  function linkPicker(ta) {
+    var det = el("details", { "class": "linkpick" }, [el("summary", { text: "Insert a link" })]);
+    var body = el("div", { "class": "lp-body" });
+    var search = el("input", { type: "search", placeholder: "Search pages, items, departments, collections", "aria-label": "Search link targets" });
+    var pickSel = el("select", { size: "6", "aria-label": "Page to link to" });
+    var textIn = el("input", { type: "text", placeholder: "Link text (defaults to the selected text, or the page's title)", autocomplete: "off", "aria-label": "Link text" });
+    var urlIn = el("input", { type: "text", placeholder: "Or a web address, https://...", autocomplete: "off", "aria-label": "Web address" });
+    var go = el("button", { type: "button", "class": "primary", text: "Insert link" });
+    var targets = [];
+    function fill() {
+      var q = search.value.trim().toLowerCase();
+      pickSel.textContent = "";
+      var group = null, gEl = null;
+      targets.forEach(function (t) {
+        if (q && (t.label + " " + t.value).toLowerCase().indexOf(q) === -1) return;
+        if (t.group !== group) { group = t.group; gEl = el("optgroup", { label: group }); pickSel.appendChild(gEl); }
+        gEl.appendChild(el("option", { value: t.value, text: t.label }));
+      });
+    }
+    det.addEventListener("toggle", function () { if (det.open) { targets = linkTargets(); fill(); } });
+    search.addEventListener("input", fill);
+    body.appendChild(search); body.appendChild(pickSel); body.appendChild(textIn); body.appendChild(urlIn);
+    body.appendChild(go);
+    body.appendChild(el("div", { "class": "hint", text: "Select some text in the box first to use it as the link text. Pick a page, or type a web address instead." }));
+    det.appendChild(body);
+    go.addEventListener("click", function () {
+      var start = ta.selectionStart, end = ta.selectionEnd;
+      var picked = targets.filter(function (t) { return t.value === pickSel.value; })[0];
+      var url = urlIn.value.trim();
+      if (!url && !picked) { setStatus("Pick a page to link to, or type a web address.", "error"); return; }
+      if (url && !/^(https?:\/\/|mailto:)/i.test(url)) { setStatus("A web address must start with https:// (or mailto:).", "error"); return; }
+      var target = url || picked.value;
+      var text = textIn.value.trim() || ta.value.slice(start, end) || (picked && picked.text) || url;
+      text = text.replace(/[\[\]]/g, "");
+      ta.setRangeText("[" + text + "](" + target + ")", start, end, "end");
+      ta.focus();
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      textIn.value = ""; urlIn.value = "";
+      setStatus("Link inserted.", "ok");
+    });
+    return det;
+  }
+  function withPicker(fieldWrap) {
+    fieldWrap.appendChild(linkPicker(fieldWrap.querySelector("textarea")));
+    return fieldWrap;
+  }
+
+  // ---------- check site ----------
+
+  var LINK_RE = /\]\(((?:page|item|dept|collection|intranet):[^)]*)\)/g;
+
+  async function checkSite() {
+    var D = state.data, found = [];
+    function add(level, message, tab, key) { found.push({ level: level, message: message, tab: tab, key: key }); }
+    function slugs(list) { var o = {}; list.forEach(function (r) { o[r.slug] = r; }); return o; }
+    var items = {}; D.items.forEach(function (i) { items[i.id] = i; });
+    var depts = slugs(D.departments), colls = slugs(D.collections), pages = slugs(D.pages), intra = slugs(D.intranet);
+    var inbound = {};   // intranet slug -> true when a published page points at it
+
+    function lookup(ref) {
+      var m = /^(page|item|dept|collection|intranet):(.*)$/.exec(ref);
+      var id = m[2].trim();
+      if (m[1] === "page") return pages[id] || null;
+      if (m[1] === "item") return items[id] || null;
+      if (m[1] === "dept") return depts[id] || null;
+      if (m[1] === "collection") return colls[id] || null;
+      return id === "home" ? {} : (intra[id] || null);
+    }
+    function scan(text, sourceRecord, label, tab, key) {
+      var m;
+      LINK_RE.lastIndex = 0;
+      while ((m = LINK_RE.exec(text || ""))) {
+        var ref = m[1].trim();
+        var target = lookup(ref);
+        if (!target) { add("problem", label + " links to " + ref + ", which does not exist.", tab, key); continue; }
+        if (target.draft && !sourceRecord.draft) add("problem", label + " links to " + ref + ", which is still a draft.", tab, key);
+        if (/^intranet:/.test(ref) && !sourceRecord.draft) inbound[ref.slice(9).trim()] = true;
+      }
+    }
+
+    // items
+    for (var i = 0; i < D.items.length; i++) {
+      var it = D.items[i], lab = "Item " + it.id;
+      if (!depts[it.department]) add("problem", lab + " is in the department \"" + it.department + "\", which does not exist.", "items", it.id);
+      if (it.collection && !colls[it.collection]) add("problem", lab + " is in the collection \"" + it.collection + "\", which does not exist.", "items", it.id);
+      if (!it.title) add("problem", lab + " has no title.", "items", it.id);
+      (it.images || []).forEach(function (im) { if (!im.alt) add("problem", lab + ": the image " + im.src + " has no alt text.", "items", it.id); });
+      if (it.inquiry && !/^\S+@\S+\.\S+$/.test(it.inquiry.email || "")) add("problem", lab + " offers purchase but its email address is not valid.", "items", it.id);
+      scan(it.description, it, lab, "items", it.id);
+      if (state.mode === "fs" || state.mode === "gh") {
+        var paths = (it.images || []).map(function (x) { return x.src; }).concat((it.files || []).map(function (x) { return x.path; }));
+        for (var k = 0; k < paths.length; k++) {
+          if (paths[k] && !(await siteHasPath(paths[k]))) add("problem", lab + " points to " + paths[k] + ", which is not in the site folder.", "items", it.id);
+        }
+      }
+    }
+    D.collections.forEach(function (c) {
+      if (c.department && !depts[c.department]) add("problem", "Collection " + c.name + " is in the department \"" + c.department + "\", which does not exist.", "collections", c.slug);
+      scan(c.description, c, "Collection " + c.name, "collections", c.slug);
+    });
+
+    // site pages
+    if (!D.pages.some(function (p) { return p.slug === "home" && p.type === "front" && !p.draft; })) add("problem", "There is no published front page (a page of type Front page with the slug home).", "pages", null);
+    if (!D.pages.some(function (p) { return p.slug === "about" && !p.draft; })) add("problem", "There is no published page with the slug about. The About link and the /about/ address lead nowhere.", "pages", null);
+    D.pages.forEach(function (p) {
+      var lab = "Page " + (p.title || p.slug);
+      scan(p.body, p, lab, "pages", p.slug);
+      (p.entries || []).forEach(function (e) { scan(e.body, p, lab, "pages", p.slug); });
+      if (p.type === "finding-aid") (p.items || []).forEach(function (r) {
+        if (!items[r.id]) add("problem", lab + " lists " + r.id + ", which is not in the catalog.", "pages", p.slug);
+        else if (items[r.id].draft && !p.draft) add("problem", lab + " lists " + r.id + ", which is still a draft.", "pages", p.slug);
+      });
+    });
+
+    // intranet
+    var numbers = {};
+    D.intranet.forEach(function (p) {
+      var lab = "Intranet page " + (p.title || p.slug);
+      scan(p.body, p, lab, "intranet", p.slug);
+      [p.issued, p.originally, p.effective, p.meetingDate].forEach(function (d) { if (d && d > LAST_INTRANET_DATE) add("problem", lab + " has a date after 1995 (" + fmt95(d) + ").", "intranet", p.slug); });
+      (p.seeAlso || []).forEach(function (sl) {
+        if (!intra[sl]) add("note", lab + " has a see-also entry for \"" + sl + "\", which does not exist. Readers will see \"not on file\". Fine if deliberate.", "intranet", p.slug);
+        else {
+          if (intra[sl].draft && !p.draft) add("problem", lab + " has a see-also entry for " + sl + ", which is still a draft.", "intranet", p.slug);
+          if (!p.draft) inbound[sl] = true;
+        }
+      });
+      if (p.type === "form" && p.number && !p.draft) {
+        var nk = String(p.number).trim();
+        if (numbers[nk]) add("problem", "Two intranet forms are numbered " + nk + ": " + numbers[nk] + " and " + p.title + ".", "intranet", p.slug);
+        numbers[nk] = p.title;
+      }
+    });
+    D.intranet.forEach(function (p) {
+      if (p.access === "classified" && !p.draft && !inbound[p.slug]) add("note", "Classified page " + (p.title || p.slug) + " is not linked from any published page. It can be reached only by typing its address (/intranet/page/?id=" + p.slug + ").", "intranet", p.slug);
+    });
+    return found;
+  }
+
+  async function openCheck() {
+    var dlg = $("check-dialog"), out = $("check-out");
+    out.textContent = "Checking...";
+    dlg.showModal();
+    var found;
+    try { found = await checkSite(); } catch (e) { out.textContent = "The check failed: " + e.message; return; }
+    out.textContent = "";
+    var problems = found.filter(function (f) { return f.level === "problem"; });
+    var notes = found.filter(function (f) { return f.level === "note"; });
+    out.appendChild(el("p", { text: problems.length ? problems.length + (problems.length === 1 ? " problem" : " problems") + " to fix" + (notes.length ? ", " + notes.length + (notes.length === 1 ? " note." : " notes.") : ".") : (notes.length ? "No problems. " + notes.length + (notes.length === 1 ? " note." : " notes.") : "No problems found.") }));
+    var ul = el("ul", { "class": "problems" });
+    problems.concat(notes).forEach(function (f) {
+      var li = el("li", {}, [el("span", { "class": "badge" + (f.level === "note" ? " note" : ""), text: f.level === "note" ? "Note" : "Fix" }), el("span", { text: f.message })]);
+      if (f.tab) {
+        var open = el("button", { type: "button", "class": "link", text: f.key ? "Open" : "Go to tab" });
+        open.addEventListener("click", function () { jumpTo(f.tab, f.key); });
+        li.appendChild(open);
+      }
+      ul.appendChild(li);
+    });
+    out.appendChild(ul);
+    out.appendChild(el("p", { "class": "hint", text: "This checks what is saved, not what is typed in the form. Intranet see-also entries that point nowhere are notes, not problems, since a gap can be on purpose." }));
+  }
+
+  function jumpTo(tab, key) {
+    if (!confirmDiscard()) return;
+    $("check-dialog").close();
+    state.tab = tab;
+    state.sel[tab] = key;
+    state.formDirty = false;
+    state.slugTouched = key !== null;
+    state.filters[tab] = {};
+    $("filter").value = "";
+    document.querySelectorAll(".tabs button").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-tab") === tab ? "true" : "false"); });
+    renderAll();
+  }
+
+  // ---------- render ----------
+
+  function renderAll() {
+    renderFilters();
+    renderList();
+    if (state.tab === "items") renderItemForm();
+    else if (state.tab === "pages") renderPageForm();
+    else if (state.tab === "intranet") renderIntranetForm();
+    else renderSimpleForm(state.tab);
+  }
+
+  // ---------- start ----------
+
+  $("btn-open").addEventListener("click", openFolder);
+  $("btn-github").addEventListener("click", function () { if (confirmDiscard()) openGithubDialog(); });
+  $("gh-connect").addEventListener("click", connectGithub);
+  $("gh-cancel").addEventListener("click", function () { $("gh-dialog").close(); });
+  $("gh-forget").addEventListener("click", function () { lsSet("ad-gh-token", ""); $("gh-token").value = ""; $("gh-remember").checked = false; $("gh-msg").textContent = "Saved token forgotten."; });
+  $("btn-download").addEventListener("click", downloadChanged);
+  $("btn-check").addEventListener("click", openCheck);
+  $("btn-new").addEventListener("click", newRecord);
+  $("filter").addEventListener("input", renderList);
+  $("fallback-input").addEventListener("change", function () { openLooseFiles(this.files); });
+  document.querySelectorAll(".tabs button").forEach(function (b) {
+    b.addEventListener("click", function () { switchTab(b.getAttribute("data-tab")); });
+  });
+
+  if (!window.showDirectoryPicker) {
+    $("btn-open").hidden = true;
+    $("fallback-wrap").hidden = false;
+    $("welcome-fs").hidden = true;
+    $("welcome-nofs").hidden = false;
+  }
+
+  window.addEventListener("beforeunload", function (ev) {
+    var pending = Object.keys(state.dirty).some(function (k) { return state.dirty[k]; });
+    if (pending || state.formDirty) { ev.preventDefault(); ev.returnValue = ""; }
+  });
+})();
+</script>
+</body>
+</html>
